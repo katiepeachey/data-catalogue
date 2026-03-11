@@ -24,4 +24,5 @@ export const TOOLS_CLIENT_ID = 873;
  */
 export const DATA_CATALOGUE_FLOW_IDS: number[] = [
   43769,  // Legal Name [v2]
+  44411,  // Company Profile > Business Model
 ];
