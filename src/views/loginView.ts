@@ -18,14 +18,14 @@ export function loginView(error?: string): string {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Login – Kernel</title>
-  <link rel="icon" type="image/png" href="/kernel-logo.png" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #f0f2f0;
-      color: #1a1a1a;
+      background: #f5f6f6;
+      color: #343539;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -53,7 +53,7 @@ export function loginView(error?: string): string {
 
     .login-logo-label {
       font-size: 11px;
-      color: #aaa;
+      color: #a1a1a2;
       letter-spacing: 0.08em;
       text-transform: uppercase;
       font-weight: 500;
@@ -62,21 +62,21 @@ export function loginView(error?: string): string {
     .login-card {
       background: #fff;
       border-radius: 14px;
-      border: 1px solid #e8ece8;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      border: 1px solid #eaebee;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.05);
       padding: 32px;
     }
 
     .login-heading {
       font-size: 18px;
       font-weight: 700;
-      color: #1a1a1a;
+      color: #343539;
       margin-bottom: 6px;
     }
 
     .login-sub {
       font-size: 13px;
-      color: #888;
+      color: #a1a1a2;
       margin-bottom: 24px;
       line-height: 1.5;
     }
@@ -87,7 +87,7 @@ export function loginView(error?: string): string {
       display: block;
       font-size: 12px;
       font-weight: 600;
-      color: #555;
+      color: #343539;
       margin-bottom: 6px;
       letter-spacing: 0.02em;
     }
@@ -95,25 +95,25 @@ export function loginView(error?: string): string {
     .form-input {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #e0e4e0;
+      border: 1px solid #eaebee;
       border-radius: 8px;
       font-size: 14px;
       font-family: inherit;
       background: #fff;
-      color: #1a1a1a;
+      color: #343539;
       outline: none;
       transition: border-color 0.15s, box-shadow 0.15s;
     }
     .form-input:focus {
-      border-color: #2d7a4f;
-      box-shadow: 0 0 0 3px rgba(45,122,79,0.1);
+      border-color: #b5c4b6;
+      box-shadow: 0 0 0 3px rgba(152,165,156,0.15);
     }
 
     .btn-signin {
       width: 100%;
       padding: 11px 18px;
-      background: #2d7a4f;
-      color: #fff;
+      background: #b5c4b6;
+      color: #343539;
       border: none;
       border-radius: 8px;
       font-size: 14px;
@@ -147,13 +147,13 @@ export function loginView(error?: string): string {
       text-align: center;
       margin-top: 20px;
       font-size: 12px;
-      color: #bbb;
+      color: #a1a1a2;
     }
     .login-footer a {
-      color: #888;
+      color: #a1a1a2;
       text-decoration: none;
     }
-    .login-footer a:hover { color: #2d7a4f; }
+    .login-footer a:hover { color: #98a59c; }
   </style>
 </head>
 <body>
