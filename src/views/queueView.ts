@@ -1,4 +1,5 @@
-import { Submission, SubmissionStatus } from '../types';
+import { SubmissionStatus } from '../types';
+import { SubmissionWithMeta } from '../db/datapoints';
 import { layout, escapeHtml } from './layout';
 
 const LABEL_DISPLAY: Record<string, string> = {
@@ -45,7 +46,7 @@ function formatDate(iso: string): string {
   }
 }
 
-export function queueView(submissions: Submission[], flashMsg?: string): string {
+export function queueView(submissions: SubmissionWithMeta[], flashMsg?: string): string {
   const pending  = submissions.filter((s) => s.status === 'pending').length;
   const approved = submissions.filter((s) => s.status === 'approved').length;
   const rejected = submissions.filter((s) => s.status === 'rejected').length;
@@ -61,7 +62,7 @@ export function queueView(submissions: Submission[], flashMsg?: string): string 
     : '';
 
   const rowsHtml = submissions.length === 0
-    ? `<tr><td colspan="6" class="empty-cell">No submissions yet.</td></tr>`
+    ? `<tr><td colspan="7" class="empty-cell">No submissions yet.</td></tr>`
     : submissions.map((s) => {
         const labelChips = s.labels
           .map(
@@ -75,6 +76,14 @@ export function queueView(submissions: Submission[], flashMsg?: string): string 
             ? `<a href="/admin/review/${escapeHtml(s.id)}" class="btn btn-primary btn-sm">Review</a>`
             : `<a href="/admin/review/${escapeHtml(s.id)}" class="btn btn-outline btn-sm">View</a>`;
 
+        const visToggle = s.status === 'approved'
+          ? `<label class="toggle-switch">
+              <input type="checkbox" ${s.visible ? 'checked' : ''}
+                onchange="toggleVis('${escapeHtml(s.id)}', this.checked)" />
+              <span class="toggle-slider"></span>
+            </label>`
+          : `<span style="color:#ccc;font-size:11px;">&mdash;</span>`;
+
         return `<tr class="data-row">
           <td>
             <div class="dp-name">${escapeHtml(s.name)}</div>
@@ -86,6 +95,7 @@ export function queueView(submissions: Submission[], flashMsg?: string): string 
           <td><div class="sub-labels">${labelChips}</div></td>
           <td class="date-cell">${formatDate(s.submittedAt)}</td>
           <td>${statusBadge(s.status)}</td>
+          <td style="text-align:center;">${visToggle}</td>
           <td>${reviewBtn}</td>
         </tr>`;
       }).join('\n');
@@ -93,11 +103,28 @@ export function queueView(submissions: Submission[], flashMsg?: string): string 
   const body = `
     ${flash}
 
-    <div class="page-header">
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;">
       <h1 class="page-title">
         Review Queue
         ${pending > 0 ? `<span class="badge">${pending} pending</span>` : ''}
       </h1>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <a href="/admin/new" class="btn btn-primary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add Datapoint
+        </a>
+        <form method="POST" action="/admin/sync" style="margin:0;">
+          <button type="submit" class="btn btn-outline btn-sm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+              <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Sync from MotherDuck
+          </button>
+        </form>
+      </div>
     </div>
 
     <div class="stats-row">
@@ -111,12 +138,13 @@ export function queueView(submissions: Submission[], flashMsg?: string): string 
       <div class="table-scroll">
         <table>
           <colgroup>
+            <col style="width:20%"/>
+            <col style="width:12%"/>
             <col style="width:22%"/>
-            <col style="width:14%"/>
-            <col style="width:28%"/>
-            <col style="width:12%"/>
-            <col style="width:12%"/>
-            <col style="width:12%"/>
+            <col style="width:10%"/>
+            <col style="width:10%"/>
+            <col style="width:10%"/>
+            <col style="width:10%"/>
           </colgroup>
           <thead>
             <tr>
@@ -125,6 +153,7 @@ export function queueView(submissions: Submission[], flashMsg?: string): string 
               <th>Labels</th>
               <th>Submitted</th>
               <th>Status</th>
+              <th>Visible</th>
               <th>Action</th>
             </tr>
           </thead>
@@ -167,7 +196,34 @@ export function queueView(submissions: Submission[], flashMsg?: string): string 
       .cat-people-metrics    { background: #f3eefb; color: #6a3fa0; border: 1px solid #d5c0ef; }
       .cat-hiring-signals    { background: #fbeee8; color: #a03a3a; border: 1px solid #f0b8a0; }
       .cat-custom-enrichment { background: #eaf6fb; color: #2a7a9a; border: 1px solid #a8d8ef; }
+
+      .toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+      .toggle-switch input { opacity: 0; width: 0; height: 0; }
+      .toggle-slider {
+        position: absolute; cursor: pointer; inset: 0;
+        background: #ddd; border-radius: 20px;
+        transition: background 0.2s;
+      }
+      .toggle-slider::before {
+        content: ''; position: absolute; width: 16px; height: 16px;
+        left: 2px; bottom: 2px; background: #fff;
+        border-radius: 50%; transition: transform 0.2s;
+      }
+      .toggle-switch input:checked + .toggle-slider { background: #2d7a4f; }
+      .toggle-switch input:checked + .toggle-slider::before { transform: translateX(16px); }
     </style>
+
+    <script>
+      function toggleVis(id, visible) {
+        fetch('/admin/datapoints/' + id + '/visibility', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ visible: visible })
+        }).then(function(r) {
+          if (!r.ok) console.error('Failed to toggle visibility');
+        }).catch(function(err) { console.error('Toggle error:', err); });
+      }
+    </script>
   `;
 
   return layout('Review Queue', body);

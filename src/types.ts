@@ -29,4 +29,35 @@ export interface Submission extends Datapoint {
   status: SubmissionStatus;
   submittedAt: string;
   rejectionReason?: string;
+  visible?: boolean;
+}
+
+/** Standard Salesforce field types for mapping */
+export const SF_FIELD_TYPES = [
+  'Text',
+  'Long Text Area',
+  'Number',
+  'Currency',
+  'Percent',
+  'Date',
+  'DateTime',
+  'Checkbox',
+  'Picklist',
+  'Multi-Select Picklist',
+  'URL',
+  'Email',
+  'Phone',
+] as const;
+
+export type SfFieldType = typeof SF_FIELD_TYPES[number];
+
+export interface DatapointField {
+  id: number;
+  datapointId: string;
+  fieldName: string;
+  displayName: string;
+  sfFieldType: SfFieldType;
+  visible: boolean;
+  sortOrder: number;
+  adminEdited: boolean;
 }
