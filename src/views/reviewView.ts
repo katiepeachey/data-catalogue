@@ -787,11 +787,13 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         var tbody = document.querySelector('#fieldConfigTable tbody');
         var i = fieldRowCount++;
         var tr = document.createElement('tr');
+
         var sel = document.createElement('select');
         sel.className = 'form-select';
         sel.name = 'fields[' + i + '][sfFieldType]';
         sel.style.cssText = 'padding:6px 8px;font-size:12px;';
         sel.innerHTML = '${sfTypeOptions}';
+
         var td1 = document.createElement('td');
         td1.innerHTML = '<input class="form-input" type="text" name="fields[' + i + '][fieldName]" placeholder="field_name" style="padding:6px 8px;font-size:12px;" />';
         var td2 = document.createElement('td');
@@ -802,9 +804,59 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         td4.innerHTML = '<input type="checkbox" name="fields[' + i + '][visible]" value="1" checked style="width:16px;height:16px;accent-color:#8fb49a;" />';
         var td5 = document.createElement('td');
         td5.innerHTML = '<input class="form-input" type="number" name="fields[' + i + '][sortOrder]" value="' + i + '" style="padding:6px 8px;font-size:12px;width:60px;" />';
+
+        // Example cell — matches server-rendered rows
         var td6 = document.createElement('td');
-        td6.innerHTML = '<input type="hidden" name="fields[' + i + '][exampleValue]" id="exVal_' + i + '" />' +
-          '<input class="form-input" type="text" id="singleInput_' + i + '" placeholder="e.g. $12M" style="padding:6px 8px;font-size:12px;" oninput="document.getElementById(\'exVal_' + i + '\').value=this.value" />';
+        var hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'fields[' + i + '][exampleValue]';
+        hidden.id = 'exVal_' + i;
+        td6.appendChild(hidden);
+
+        var singleDiv = document.createElement('div');
+        singleDiv.id = 'single_' + i;
+        var singleInp = document.createElement('input');
+        singleInp.className = 'form-input';
+        singleInp.type = 'text';
+        singleInp.id = 'singleInput_' + i;
+        singleInp.placeholder = 'e.g. $12M';
+        singleInp.style.cssText = 'padding:6px 8px;font-size:12px;';
+        singleInp.oninput = function() { hidden.value = singleInp.value; };
+        singleDiv.appendChild(singleInp);
+        td6.appendChild(singleDiv);
+
+        if (classifierOpts.length > 0) {
+          var peroptDiv = document.createElement('div');
+          peroptDiv.id = 'peropt_' + i;
+          peroptDiv.style.display = 'none';
+          classifierOpts.forEach(function(opt) {
+            var row = document.createElement('div');
+            row.className = 'per-opt-row';
+            var lbl = document.createElement('span');
+            lbl.className = 'per-opt-label';
+            lbl.textContent = opt;
+            var optInp = document.createElement('input');
+            optInp.className = 'form-input per-opt-input';
+            optInp.type = 'text';
+            optInp.setAttribute('data-opt', opt);
+            optInp.placeholder = 'Example for ' + opt + '...';
+            optInp.style.cssText = 'padding:5px 8px;font-size:11px;';
+            optInp.addEventListener('input', function() { rebuildExampleJson(i); });
+            row.appendChild(lbl); row.appendChild(optInp);
+            peroptDiv.appendChild(row);
+          });
+          td6.appendChild(peroptDiv);
+
+          var togBtn = document.createElement('button');
+          togBtn.type = 'button';
+          togBtn.className = 'per-opt-toggle';
+          togBtn.id = 'togBtn_' + i;
+          togBtn.style.marginTop = '4px';
+          togBtn.textContent = 'Per option ↓';
+          togBtn.addEventListener('click', function() { togglePerOption(i); });
+          td6.appendChild(togBtn);
+        }
+
         tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
         tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6);
         tbody.appendChild(tr);
