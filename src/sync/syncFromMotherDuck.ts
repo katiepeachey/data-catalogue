@@ -171,6 +171,18 @@ export async function syncFromMotherDuck(): Promise<SyncResult> {
     const datapoints = grouped.map((g) => transformToDatapoint(g.primary));
     upsertMany(datapoints);
 
+    // Clean up orphaned records: remove non-admin-edited datapoints whose IDs
+    // were not in this sync (covers old cf_* format records and removed agents).
+    const syncedIds = datapoints.map((dp) => dp.id);
+    if (syncedIds.length > 0) {
+      const placeholders = syncedIds.map(() => '?').join(', ');
+      db.prepare(
+        `DELETE FROM datapoints WHERE admin_edited = 0 AND id NOT IN (${placeholders}) AND id LIKE 'agent_%'`
+      ).run(...syncedIds);
+      // Also wipe legacy cf_* records (old ID format) that weren't admin-edited
+      db.prepare(`DELETE FROM datapoints WHERE id LIKE 'cf_%' AND admin_edited = 0`).run();
+    }
+
     result.datapointsUnchanged = existingRows.length - result.datapointsUpdated;
     if (result.datapointsUnchanged < 0) result.datapointsUnchanged = 0;
 

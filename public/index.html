@@ -81,7 +81,7 @@
       display: inline-flex; align-items: center;
       font-size: 10px; font-weight: 700;
       letter-spacing: 0.04em; text-transform: uppercase;
-      border-radius: 4px; padding: 2px 6px;
+      border-radius: 20px; padding: 3px 9px;
       white-space: nowrap; line-height: 1.4;
       cursor: pointer; transition: opacity 0.15s;
     }
@@ -108,14 +108,15 @@
     .fields-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 3px; }
     .field-tag { display: inline-block; font-size: 12px; color: #2d5a3d; background: #eef7f2; border: 1px solid #d0eadb; border-radius: 4px; padding: 2px 7px; width: fit-content; }
 
-    /* -- SF type badges -- */
-    .sf-type-badge {
-      display: inline-flex; font-size: 9px; font-weight: 600;
-      background: #eef2fc; color: #3a5fa0; border: 1px solid #b8c8ef;
-      border-radius: 3px; padding: 2px 5px; margin: 1px 2px;
-      text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+    /* -- Possible values chips -- */
+    .value-chip {
+      display: inline-flex; font-size: 10px; font-weight: 600;
+      background: #f0f2f0; color: #555; border: 1px solid #e0e4e0;
+      border-radius: 10px; padding: 2px 8px; white-space: nowrap;
     }
-    .sf-types-cell { display: flex; flex-wrap: wrap; gap: 3px; }
+    .value-chip.overflow { background: #eef2fc; color: #3a5fa0; border-color: #b8c8ef; cursor: default; }
+    .values-cell { display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-start; }
+    .data-type-label { font-size: 11px; color: #aaa; font-style: italic; }
 
     /* -- Source badges -- */
     .source-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; border-radius: 6px; padding: 3px 9px; white-space: nowrap; }
@@ -143,6 +144,10 @@
     <a class="nav-link" href="#">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
       Kernel App
+    </a>
+    <a class="nav-link" href="/admin/queue" style="color:#2d7a4f;font-weight:600;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Admin
     </a>
   </div>
 </nav>
@@ -204,7 +209,7 @@
             <th>Datapoint</th>
             <th>Description</th>
             <th>Output Fields</th>
-            <th>SF Field Type</th>
+            <th>Possible Values</th>
             <th>Source</th>
             <th>Updated</th>
           </tr>
@@ -336,22 +341,47 @@ function renderTable() {
           }).join('') + '</ul>'
         : '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
 
-      var sfTypesHtml = fields.length > 0
-        ? fields.map(function(f) {
-            return '<span class="sf-type-badge">' + escapeHtml(f.sfFieldType) + '</span>';
-          }).join(' ')
-        : '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
+      // Possible values: show classifier options if available, else data type label
+      var possibleValuesHtml = (function() {
+        var sample = dp.classifierOptionsSample;
+        if (sample) {
+          try {
+            var parsed = JSON.parse(sample);
+            var opts = parsed.options || [];
+            if (opts.length > 0) {
+              var MAX_SHOW = 4;
+              var visible = opts.slice(0, MAX_SHOW);
+              var extra = opts.length - MAX_SHOW;
+              var html = '<div class="values-cell">' +
+                visible.map(function(o) {
+                  return '<span class="value-chip">' + escapeHtml(o.name || '') + '</span>';
+                }).join('') +
+                (extra > 0 ? '<span class="value-chip overflow">+' + extra + ' more</span>' : '') +
+                '</div>';
+              return html;
+            }
+          } catch(e) {}
+        }
+        // No options: show data type
+        var dt = dp.dataType || 'text';
+        var dtLabel = { 'string': 'Free text', 'number': 'Number', 'boolean': 'True / False', 'date': 'Date', 'string_array': 'List' }[dt.toLowerCase()] || 'Free text';
+        return '<span class="data-type-label">' + escapeHtml(dtLabel) + '</span>';
+      })();
 
+      var linkedinSvg = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px;flex-shrink:0;"><path d="M20.447 20.452H16.89v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a1.98 1.98 0 0 1-1.983-1.98 1.98 1.98 0 0 1 3.962 0 1.98 1.98 0 0 1-1.979 1.98zm1.961 13.019H3.374V9h3.924v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>';
+      var kernelSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px;flex-shrink:0;"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
       var sourceBadge = dp.source === 'linkedin'
-        ? '<span class="source-badge source-linkedin"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452H16.89v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a1.98 1.98 0 0 1-1.983-1.98 1.98 1.98 0 0 1 3.962 0 1.98 1.98 0 0 1-1.979 1.98zm1.961 13.019H3.374V9h3.924v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</span>'
-        : '<span class="source-badge source-kernel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Kernel AI</span>';
+        ? '<span class="source-badge source-linkedin">' + linkedinSvg + 'LinkedIn</span>'
+        : dp.source === 'both'
+        ? '<div style="display:flex;gap:4px;flex-wrap:wrap;"><span class="source-badge source-kernel">' + kernelSvg + 'Kernel AI</span><span class="source-badge source-linkedin">' + linkedinSvg + 'LinkedIn</span></div>'
+        : '<span class="source-badge source-kernel">' + kernelSvg + 'Kernel AI</span>';
 
       tr.innerHTML =
         '<td><div class="sub-labels">' + labelsHtml + '</div></td>' +
         '<td><div class="dp-name">' + escapeHtml(dp.name) + '</div></td>' +
         '<td><span class="dp-desc">' + escapeHtml(dp.description) + '</span></td>' +
         '<td>' + fieldsHtml + '</td>' +
-        '<td><div class="sf-types-cell">' + sfTypesHtml + '</div></td>' +
+        '<td>' + possibleValuesHtml + '</td>' +
         '<td>' + sourceBadge + '</td>' +
         '<td class="date-cell">' + escapeHtml(dp.updatedDate || '') + '</td>';
 

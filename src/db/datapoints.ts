@@ -67,6 +67,8 @@ function rowToSubmission(row: DatapointRow): Submission {
     submittedAt: row.submitted_at || new Date().toISOString(),
     rejectionReason: row.rejection_reason || undefined,
     visible: row.visible === 1,
+    classifierOptionsSample: row.classifier_options_sample || null,
+    dataType: row.data_type || null,
   };
 }
 

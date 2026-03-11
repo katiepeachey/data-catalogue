@@ -23,6 +23,8 @@ export interface Datapoint {
   source: Source;
   labels: Label[];
   updatedDate: string;
+  classifierOptionsSample?: string | null;
+  dataType?: string | null;
 }
 
 export interface Submission extends Datapoint {

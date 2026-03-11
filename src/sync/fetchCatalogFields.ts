@@ -57,8 +57,10 @@ export async function fetchCatalogFields(): Promise<RawCatalogField[]> {
       SELECT
         s.*,
         CASE
+          -- If the immediate parent is a DC agent, group under the parent (handles child flows)
+          WHEN s.agent_parent_id IN (SELECT agent_id FROM data_catalogue_agents) THEN s.agent_parent_id
+          -- Otherwise use the agent itself (it is the top-level DC agent)
           WHEN s.agent_id IN (SELECT agent_id FROM data_catalogue_agents) THEN s.agent_id
-          ELSE s.agent_parent_id
         END AS top_level_agent_id
       FROM core.agent_classifier_field_snapshot s
       WHERE s.has_catalog_field_match = true
