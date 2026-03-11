@@ -101,32 +101,33 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
   const classifierOptionsJson = JSON.stringify(classifierOptions);
 
   const fieldConfigRows = fields.map((f, i) => {
-    // Determine if this field has per-option examples
-    let isPerOption = false;
+    // Parse any existing per-option map
     let perOptionMap: Record<string, string> = {};
+    let exampleSingle = '';
     if (f.exampleValue) {
       try {
         const parsed = JSON.parse(f.exampleValue);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          isPerOption = true;
           perOptionMap = parsed;
+        } else {
+          exampleSingle = f.exampleValue || '';
         }
-      } catch { /* plain text */ }
+      } catch { exampleSingle = f.exampleValue || ''; }
     }
-    const exampleSingle = isPerOption ? '' : (f.exampleValue || '');
 
-    // Per-option inputs (one per classifier option)
-    const perOptionInputs = hasOptions ? classifierOptions.map((opt) =>
-      `<div class="per-opt-row">
-        <span class="per-opt-label">${escapeHtml(opt)}</span>
-        <input class="form-input per-opt-input" type="text"
-          data-opt="${escapeHtml(opt)}"
-          value="${escapeHtml(perOptionMap[opt] || '')}"
-          placeholder="Example for ${escapeHtml(opt)}..."
-          style="padding:5px 8px;font-size:11px;"
-          oninput="rebuildExampleJson(${i})" />
-      </div>`
+    // Chips for fields in datapoints with classifier options
+    const chipsHtml = hasOptions ? classifierOptions.map((opt, oi) =>
+      `<span class="admin-chip${oi === 0 ? ' active' : ''}" data-opt="${escapeHtml(opt)}"
+        onclick="adminSelectChip(this,${i})">${escapeHtml(opt)}</span>`
     ).join('') : '';
+
+    // Initial text for the shared input = first option's example (or empty)
+    const firstOptExample = hasOptions && classifierOptions[0]
+      ? escapeHtml(perOptionMap[classifierOptions[0]] || '')
+      : '';
+    const firstOptPlaceholder = hasOptions && classifierOptions[0]
+      ? `Example for ${escapeHtml(classifierOptions[0])}...`
+      : 'e.g. $12M';
 
     return `
     <tr>
@@ -154,23 +155,18 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
           value="${f.sortOrder}" style="padding:6px 8px;font-size:12px;width:60px;" />
       </td>
       <td>
-        <!-- Hidden input holds final submitted value (plain text or JSON) -->
         <input type="hidden" name="fields[${i}][exampleValue]" id="exVal_${i}"
           value="${escapeHtml(f.exampleValue || '')}" />
         ${hasOptions ? `
-        <!-- Single example (shown when details is closed) -->
-        <input class="form-input" type="text" id="singleInput_${i}"
-          value="${escapeHtml(exampleSingle)}"
-          placeholder="e.g. $12M"
-          style="padding:6px 8px;font-size:12px;${isPerOption ? 'display:none;' : ''}"
-          oninput="document.getElementById('exVal_${i}').value=this.value" />
-        <!-- Per-option examples — native expand/collapse, no JS needed for toggle -->
-        <details class="per-opt-details" id="peropt_details_${i}"${isPerOption ? ' open' : ''}>
-          <summary class="per-opt-toggle">↓ Per option examples</summary>
-          <div id="peropt_${i}" style="margin-top:6px;">
-            ${perOptionInputs}
-          </div>
-        </details>
+        <div class="admin-chips" id="adminChips_${i}"
+          data-map="${escapeHtml(JSON.stringify(perOptionMap))}">
+          ${chipsHtml}
+        </div>
+        <input class="form-input" type="text" id="optInput_${i}"
+          value="${firstOptExample}"
+          placeholder="${firstOptPlaceholder}"
+          style="margin-top:5px;padding:6px 8px;font-size:12px;width:100%;"
+          oninput="updateChipExample(${i})" />
         ` : `
         <input class="form-input" type="text" id="singleInput_${i}"
           value="${escapeHtml(exampleSingle)}"
@@ -526,24 +522,18 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         cursor: pointer; accent-color: #2d7a4f;
       }
 
-      /* -- Per-option example inputs -- */
-      .per-opt-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
-      .per-opt-label {
-        font-size: 10px; font-weight: 700; color: #343539;
-        background: #f0f6f1; border: 1px solid #c8d5c9; border-radius: 20px;
-        padding: 2px 8px; white-space: nowrap; min-width: 60px; text-align: center;
+      /* -- Admin option chips -- */
+      .admin-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+      .admin-chip {
+        display: inline-flex; align-items: center;
+        font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+        border-radius: 20px; padding: 3px 10px;
+        cursor: pointer; border: 1.5px solid #e0e4e0;
+        background: #f0f2f0; color: #666;
+        transition: all 0.12s; white-space: nowrap; user-select: none;
       }
-      .per-opt-details { margin-top: 5px; }
-      .per-opt-details summary.per-opt-toggle {
-        display: inline-flex; align-items: center; gap: 4px;
-        font-size: 11px; font-weight: 600; color: #3a6b4a;
-        background: #eaf5ec; border: 1px solid #b8d8c0; border-radius: 6px;
-        cursor: pointer; padding: 3px 8px;
-        list-style: none; user-select: none;
-      }
-      .per-opt-details summary.per-opt-toggle::-webkit-details-marker { display: none; }
-      .per-opt-details summary.per-opt-toggle:hover { background: #d4edda; }
-      .per-opt-details[open] summary.per-opt-toggle { background: #d4edda; }
+      .admin-chip:hover { background: #e4e8e4; border-color: #c8d5c9; }
+      .admin-chip.active { background: #343539; color: #fff; border-color: #343539; }
 
       /* -- Field config table -- */
       .field-config-table-wrap {
@@ -557,8 +547,8 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         padding: 8px 10px; text-align: left; border-bottom: 1px solid #e0e4e0;
       }
       .field-config-table tbody td {
-        padding: 6px 10px; border-bottom: 1px solid #f0f2f0;
-        vertical-align: middle; font-size: 12px;
+        padding: 8px 10px; border-bottom: 1px solid #f0f2f0;
+        vertical-align: top; font-size: 12px;
       }
       .field-config-table tbody tr:last-child td { border-bottom: none; }
 
@@ -742,34 +732,60 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
 
       var classifierOpts = ${classifierOptionsJson};
 
-      function rebuildExampleJson(i) {
-        var inputs = document.querySelectorAll('#peropt_' + i + ' .per-opt-input');
-        var map = {};
-        for (var j = 0; j < inputs.length; j++) {
-          var opt = inputs[j].getAttribute('data-opt');
-          var val = inputs[j].value.trim();
-          if (val) map[opt] = val;
+      // Per-field example maps: { fieldIndex: { optionName: exampleText } }
+      var adminChipMaps = {};
+      var adminActiveChip = {};
+
+      // Initialise from server-rendered data-map attributes
+      document.querySelectorAll('.admin-chips').forEach(function(chipsEl) {
+        var fi = parseInt(chipsEl.id.replace('adminChips_', ''), 10);
+        try { adminChipMaps[fi] = JSON.parse(chipsEl.getAttribute('data-map') || '{}'); }
+        catch(e) { adminChipMaps[fi] = {}; }
+        // First chip is active by default (already marked active in HTML)
+        var firstChip = chipsEl.querySelector('.admin-chip');
+        adminActiveChip[fi] = firstChip ? firstChip.getAttribute('data-opt') : null;
+      });
+
+      function adminSelectChip(chipEl, fi) {
+        // Save current text input value into the map for the previously active chip
+        var input = document.getElementById('optInput_' + fi);
+        var prev = adminActiveChip[fi];
+        if (prev !== null && input) {
+          if (!adminChipMaps[fi]) adminChipMaps[fi] = {};
+          adminChipMaps[fi][prev] = input.value;
+          flushChipMap(fi);
         }
-        document.getElementById('exVal_' + i).value = Object.keys(map).length ? JSON.stringify(map) : '';
+        // Update chip styles
+        var chipsEl = document.getElementById('adminChips_' + fi);
+        if (chipsEl) chipsEl.querySelectorAll('.admin-chip').forEach(function(c) { c.classList.remove('active'); });
+        chipEl.classList.add('active');
+        // Load new chip's saved value
+        var opt = chipEl.getAttribute('data-opt');
+        adminActiveChip[fi] = opt;
+        if (input) {
+          input.value = (adminChipMaps[fi] && adminChipMaps[fi][opt]) || '';
+          input.placeholder = 'Example for ' + opt + '...';
+          input.focus();
+        }
       }
 
-      // Attach toggle listeners to all per-option <details> elements
-      document.querySelectorAll('.per-opt-details').forEach(function(det) {
-        var idx = parseInt(det.id.replace('peropt_details_', ''), 10);
-        var singleInp = document.getElementById('singleInput_' + idx);
-        det.addEventListener('toggle', function() {
-          if (det.open) {
-            // Expanded: hide single input, rebuild JSON from per-option inputs
-            if (singleInp) singleInp.style.display = 'none';
-            rebuildExampleJson(idx);
-          } else {
-            // Collapsed: show single input, set hidden to its value
-            if (singleInp) singleInp.style.display = '';
-            var hidden = document.getElementById('exVal_' + idx);
-            if (hidden && singleInp) hidden.value = singleInp.value;
-          }
-        });
-      });
+      function updateChipExample(fi) {
+        var input = document.getElementById('optInput_' + fi);
+        var opt = adminActiveChip[fi];
+        if (opt && input) {
+          if (!adminChipMaps[fi]) adminChipMaps[fi] = {};
+          adminChipMaps[fi][opt] = input.value;
+        }
+        flushChipMap(fi);
+      }
+
+      function flushChipMap(fi) {
+        var map = adminChipMaps[fi] || {};
+        var clean = {};
+        Object.keys(map).forEach(function(k) { if (map[k]) clean[k] = map[k]; });
+        var hidden = document.getElementById('exVal_' + fi);
+        if (hidden) hidden.value = Object.keys(clean).length ? JSON.stringify(clean) : '';
+      }
 
       // Field config: add new row
       var fieldRowCount = ${fields.length};
@@ -804,60 +820,41 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         hidden.id = 'exVal_' + i;
         td6.appendChild(hidden);
 
-        var singleDiv = document.createElement('div');
-        singleDiv.id = 'single_' + i;
-        var singleInp = document.createElement('input');
-        singleInp.className = 'form-input';
-        singleInp.type = 'text';
-        singleInp.id = 'singleInput_' + i;
-        singleInp.placeholder = 'e.g. $12M';
-        singleInp.style.cssText = 'padding:6px 8px;font-size:12px;';
-        singleInp.oninput = function() { hidden.value = singleInp.value; };
-        singleDiv.appendChild(singleInp);
-        td6.appendChild(singleDiv);
-
         if (classifierOpts.length > 0) {
-          var details = document.createElement('details');
-          details.className = 'per-opt-details';
-          details.id = 'peropt_details_' + i;
-
-          var summary = document.createElement('summary');
-          summary.className = 'per-opt-toggle';
-          summary.textContent = '↓ Per option examples';
-          details.appendChild(summary);
-
-          var peroptDiv = document.createElement('div');
-          peroptDiv.id = 'peropt_' + i;
-          peroptDiv.style.marginTop = '6px';
-          classifierOpts.forEach(function(opt) {
-            var row = document.createElement('div');
-            row.className = 'per-opt-row';
-            var lbl = document.createElement('span');
-            lbl.className = 'per-opt-label';
-            lbl.textContent = opt;
-            var optInp = document.createElement('input');
-            optInp.className = 'form-input per-opt-input';
-            optInp.type = 'text';
-            optInp.setAttribute('data-opt', opt);
-            optInp.placeholder = 'Example for ' + opt + '...';
-            optInp.style.cssText = 'padding:5px 8px;font-size:11px;';
-            optInp.addEventListener('input', function() { rebuildExampleJson(i); });
-            row.appendChild(lbl); row.appendChild(optInp);
-            peroptDiv.appendChild(row);
+          // Chip-based per-option input
+          adminChipMaps[i] = {};
+          var chipsDiv = document.createElement('div');
+          chipsDiv.className = 'admin-chips';
+          chipsDiv.id = 'adminChips_' + i;
+          chipsDiv.setAttribute('data-map', '{}');
+          classifierOpts.forEach(function(opt, oi) {
+            var chip = document.createElement('span');
+            chip.className = 'admin-chip' + (oi === 0 ? ' active' : '');
+            chip.setAttribute('data-opt', opt);
+            chip.textContent = opt;
+            chip.addEventListener('click', function() { adminSelectChip(chip, i); });
+            chipsDiv.appendChild(chip);
           });
-          details.appendChild(peroptDiv);
-          td6.appendChild(details);
+          td6.appendChild(chipsDiv);
+          adminActiveChip[i] = classifierOpts[0] || null;
 
-          // Attach toggle listener
-          details.addEventListener('toggle', function() {
-            if (details.open) {
-              singleInp.style.display = 'none';
-              rebuildExampleJson(i);
-            } else {
-              singleInp.style.display = '';
-              hidden.value = singleInp.value;
-            }
-          });
+          var optInp = document.createElement('input');
+          optInp.className = 'form-input';
+          optInp.type = 'text';
+          optInp.id = 'optInput_' + i;
+          optInp.placeholder = classifierOpts[0] ? 'Example for ' + classifierOpts[0] + '...' : '';
+          optInp.style.cssText = 'margin-top:5px;padding:6px 8px;font-size:12px;width:100%;';
+          optInp.addEventListener('input', function() { updateChipExample(i); });
+          td6.appendChild(optInp);
+        } else {
+          var singleInp = document.createElement('input');
+          singleInp.className = 'form-input';
+          singleInp.type = 'text';
+          singleInp.id = 'singleInput_' + i;
+          singleInp.placeholder = 'e.g. $12M';
+          singleInp.style.cssText = 'padding:6px 8px;font-size:12px;';
+          singleInp.oninput = function() { hidden.value = singleInp.value; };
+          td6.appendChild(singleInp);
         }
 
         tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
