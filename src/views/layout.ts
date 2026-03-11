@@ -126,7 +126,7 @@ export function layout(title: string, body: string): string {
       display: inline-flex; align-items: center;
       font-size: 10px; font-weight: 700;
       letter-spacing: 0.04em; text-transform: uppercase;
-      border-radius: 4px; padding: 2px 6px;
+      border-radius: 20px; padding: 3px 9px;
       white-space: nowrap; line-height: 1.4;
     }
     .lbl-company-identity          { background: #eef7f2; color: #2d6e4a; border: 1px solid #c0dfc9; }

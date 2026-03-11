@@ -28,7 +28,7 @@ function categoryOption(cat: Category, current: Category): string {
 }
 
 function sourceOption(src: Source, current: Source): string {
-  const labels: Record<Source, string> = { kernel: 'Kernel AI', linkedin: 'LinkedIn' };
+  const labels: Record<Source, string> = { kernel: 'Kernel AI', linkedin: 'LinkedIn', both: 'Kernel AI & LinkedIn' };
   return `<option value="${src}"${src === current ? ' selected' : ''}>${labels[src]}</option>`;
 }
 
@@ -40,16 +40,17 @@ function labelCheckbox(label: { value: Label; display: string }, isChecked: bool
 }
 
 function previewSourceBadge(source: Source): string {
-  if (source === 'kernel') {
-    return `<span class="source-badge source-kernel">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>Kernel AI</span>`;
-  }
-  return `<span class="source-badge source-linkedin">
+  const kernelBadge = `<span class="source-badge source-kernel">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>Kernel AI</span>`;
+  const linkedinBadge = `<span class="source-badge source-linkedin">
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M20.447 20.452H16.89v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a1.98 1.98 0 0 1-1.983-1.98 1.98 1.98 0 0 1 3.962 0 1.98 1.98 0 0 1-1.979 1.98zm1.961 13.019H3.374V9h3.924v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
     </svg>LinkedIn</span>`;
+  if (source === 'kernel') return kernelBadge;
+  if (source === 'linkedin') return linkedinBadge;
+  return `<div style="display:flex;gap:6px;flex-wrap:wrap;">${kernelBadge}${linkedinBadge}</div>`;
 }
 
 export function reviewView(submission: SubmissionWithMeta, fields: DatapointField[]): string {
@@ -213,6 +214,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
                 <select class="form-select" id="source" name="source">
                   ${sourceOption('kernel', submission.source)}
                   ${sourceOption('linkedin', submission.source)}
+                  ${sourceOption('both', submission.source)}
                 </select>
               </div>
 
@@ -449,8 +451,8 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
 
       /* Labels grid */
       .labels-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        display: flex;
+        flex-wrap: wrap;
         gap: 8px;
         padding: 12px;
         background: #fafcfa;
@@ -574,7 +576,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         position: fixed; inset: 0;
         background: rgba(0,0,0,0.45);
         z-index: 200;
-        display: flex !important;
+        display: none;
         align-items: center;
         justify-content: center;
       }

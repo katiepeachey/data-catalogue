@@ -1,4 +1,4 @@
-export type Source = 'kernel' | 'linkedin';
+export type Source = 'kernel' | 'linkedin' | 'both';
 export type SubmissionStatus = 'pending' | 'approved' | 'rejected';
 
 export type Label =

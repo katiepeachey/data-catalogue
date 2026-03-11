@@ -157,9 +157,9 @@ export async function syncFromMotherDuck(): Promise<SyncResult> {
           result.datapointsUpdated++;
         }
 
-        // Upsert datapoint_fields for each output field
-        // All output fields inherit the primary field's data type for SF mapping.
-        // Admins can override SF types via the field config UI.
+        // Upsert datapoint_fields for each output field (raw catalog field name).
+        // humanizeName converts e.g. "krnl_funding" → "KRNL Funding" for display.
+        // Admins can override SF types and display names via the field config UI.
         for (const fieldName of dp.outputFields) {
           const displayName = humanizeName(fieldName);
           const sfType = mapSfFieldType(dp.dataType);
