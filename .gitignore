@@ -1,4 +1,5 @@
 node_modules/
 dist/
 .env
+data/
 render-app-scaffold-prompt.md

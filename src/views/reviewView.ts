@@ -1,4 +1,5 @@
-import { Submission, Label, Category, Source } from '../types';
+import { Label, Category, Source, SF_FIELD_TYPES, DatapointField } from '../types';
+import { SubmissionWithMeta } from '../db/datapoints';
 import { layout, escapeHtml } from './layout';
 
 const ALL_LABELS: { value: Label; display: string }[] = [
@@ -51,7 +52,7 @@ function previewSourceBadge(source: Source): string {
     </svg>LinkedIn</span>`;
 }
 
-export function reviewView(submission: Submission): string {
+export function reviewView(submission: SubmissionWithMeta, fields: DatapointField[]): string {
   const labelCheckboxes = ALL_LABELS.map((l) =>
     labelCheckbox(l, submission.labels.includes(l.value))
   ).join('\n');
@@ -60,8 +61,6 @@ export function reviewView(submission: Submission): string {
     categoryOption(c, submission.category)
   ).join('\n');
 
-  const outputFieldsText = submission.outputFields.join('\n');
-
   const previewLabels = submission.labels
     .map((l) => {
       const found = ALL_LABELS.find((al) => al.value === l);
@@ -69,8 +68,12 @@ export function reviewView(submission: Submission): string {
     })
     .join('');
 
-  const previewFields = submission.outputFields
-    .map((f) => `<li><span class="field-tag">${escapeHtml(f)}</span></li>`)
+  const previewFields = fields
+    .filter((f) => f.visible)
+    .map((f) => `<li>
+      <span class="field-tag">${escapeHtml(f.displayName)}</span>
+      <span class="sf-type-badge">${escapeHtml(f.sfFieldType)}</span>
+    </li>`)
     .join('\n');
 
   const statusClass =
@@ -82,6 +85,36 @@ export function reviewView(submission: Submission): string {
 
   const statusLabel =
     submission.status.charAt(0).toUpperCase() + submission.status.slice(1);
+
+  const sfTypeOptions = SF_FIELD_TYPES.map((t) => `<option value="${t}">${t}</option>`).join('');
+
+  const fieldConfigRows = fields.map((f, i) => `
+    <tr>
+      <td>
+        <span class="field-tag" style="font-size:11px;">${escapeHtml(f.fieldName)}</span>
+        <input type="hidden" name="fields[${i}][fieldName]" value="${escapeHtml(f.fieldName)}" />
+      </td>
+      <td>
+        <input class="form-input" type="text" name="fields[${i}][displayName]"
+          value="${escapeHtml(f.displayName)}" style="padding:6px 8px;font-size:12px;" />
+      </td>
+      <td>
+        <select class="form-select" name="fields[${i}][sfFieldType]" style="padding:6px 8px;font-size:12px;">
+          ${SF_FIELD_TYPES.map((t) =>
+            `<option value="${t}"${t === f.sfFieldType ? ' selected' : ''}>${t}</option>`
+          ).join('')}
+        </select>
+      </td>
+      <td style="text-align:center;">
+        <input type="checkbox" name="fields[${i}][visible]" value="1"${f.visible ? ' checked' : ''}
+          style="width:16px;height:16px;accent-color:#2d7a4f;" />
+      </td>
+      <td>
+        <input class="form-input" type="number" name="fields[${i}][sortOrder]"
+          value="${f.sortOrder}" style="padding:6px 8px;font-size:12px;width:60px;" />
+      </td>
+    </tr>
+  `).join('');
 
   const body = `
     <div class="review-layout">
@@ -122,12 +155,33 @@ export function reviewView(submission: Submission): string {
             </div>
 
             <div class="form-group">
-              <label class="form-label" for="outputFields">
-                Output Fields
-                <span class="label-hint">One field per line</span>
+              <label class="form-label">
+                Field Configuration
+                <span class="label-hint">Configure display names, SF types, and visibility per field</span>
               </label>
-              <textarea class="form-textarea" id="outputFields" name="outputFields"
-                rows="5" placeholder="Field Name 1&#10;Field Name 2&#10;Field Name 3">${escapeHtml(outputFieldsText)}</textarea>
+              <div class="field-config-table-wrap">
+                <table class="field-config-table" id="fieldConfigTable">
+                  <thead>
+                    <tr>
+                      <th style="width:25%;">Original Name</th>
+                      <th style="width:25%;">Display Name</th>
+                      <th style="width:22%;">SF Field Type</th>
+                      <th style="width:13%;">Visible</th>
+                      <th style="width:15%;">Order</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${fieldConfigRows}
+                  </tbody>
+                </table>
+                ${fields.length === 0 ? '<p style="color:#aaa;font-size:12px;padding:12px;">No fields configured yet. Add fields below or run a sync.</p>' : ''}
+                <button type="button" class="btn btn-outline btn-sm" style="margin:8px 10px;" onclick="addFieldRow()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Add Field
+                </button>
+              </div>
             </div>
 
             <div class="form-grid">
@@ -238,6 +292,64 @@ export function reviewView(submission: Submission): string {
               </div>`
             : ''}
         </div>
+
+        <div class="card portal-context-card" style="margin-top:14px;">
+          <div class="meta-title">Portal Context</div>
+          ${submission.adminEdited
+            ? `<div class="meta-row">
+                <span class="meta-key">Admin Edited</span>
+                <span class="meta-val"><span class="status-badge status-approved" style="font-size:10px;">Yes — syncs won't overwrite</span></span>
+              </div>`
+            : ''}
+          ${submission.autoName && submission.autoName !== submission.name
+            ? `<div class="meta-row">
+                <span class="meta-key">Portal Name</span>
+                <span class="meta-val mono" style="font-size:11px;">${escapeHtml(submission.autoName)}</span>
+              </div>`
+            : ''}
+          ${submission.producingAgents.length > 0
+            ? `<div class="meta-row" style="flex-direction:column;gap:4px;">
+                <span class="meta-key">Producing Agents</span>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                  ${submission.producingAgents.map((a) =>
+                    `<span class="sub-label lbl-technology-infrastructure" style="font-size:10px;">${escapeHtml(a)}</span>`
+                  ).join('')}
+                </div>
+              </div>`
+            : ''}
+          ${submission.classifierInfo.length > 0
+            ? `<div class="meta-row" style="flex-direction:column;gap:4px;">
+                <span class="meta-key">Classifiers</span>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                  ${submission.classifierInfo.map((c) =>
+                    `<span class="sub-label lbl-industry-market" style="font-size:10px;">${escapeHtml(c)}</span>`
+                  ).join('')}
+                </div>
+              </div>`
+            : ''}
+          ${submission.rdClassification
+            ? `<div class="meta-row">
+                <span class="meta-key">Classification</span>
+                <span class="meta-val">${escapeHtml(submission.rdClassification)}</span>
+              </div>`
+            : ''}
+          ${submission.dataType
+            ? `<div class="meta-row">
+                <span class="meta-key">Data Type</span>
+                <span class="meta-val mono" style="font-size:11px;">${escapeHtml(submission.dataType)}</span>
+              </div>`
+            : ''}
+          ${submission.entityType
+            ? `<div class="meta-row">
+                <span class="meta-key">Entity Type</span>
+                <span class="meta-val mono" style="font-size:11px;">${escapeHtml(submission.entityType)}</span>
+              </div>`
+            : ''}
+          <div class="meta-row">
+            <span class="meta-key">Client Count</span>
+            <span class="meta-val">${submission.clientCount}</span>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -305,7 +417,7 @@ export function reviewView(submission: Submission): string {
     </div>
 
     <style>
-      /* ── Review layout ── */
+      /* -- Review layout -- */
       .review-layout {
         display: grid;
         grid-template-columns: 1fr 360px;
@@ -357,7 +469,32 @@ export function reviewView(submission: Submission): string {
         cursor: pointer; accent-color: #2d7a4f;
       }
 
-      /* ── Preview card ── */
+      /* -- Field config table -- */
+      .field-config-table-wrap {
+        background: #fafcfa; border: 1px solid #e8ece8;
+        border-radius: 8px; overflow: hidden;
+      }
+      .field-config-table { width: 100%; border-collapse: collapse; }
+      .field-config-table thead th {
+        background: #f0f2f0; color: #888; font-size: 10px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        padding: 8px 10px; text-align: left; border-bottom: 1px solid #e0e4e0;
+      }
+      .field-config-table tbody td {
+        padding: 6px 10px; border-bottom: 1px solid #f0f2f0;
+        vertical-align: middle; font-size: 12px;
+      }
+      .field-config-table tbody tr:last-child td { border-bottom: none; }
+
+      /* -- SF type badge -- */
+      .sf-type-badge {
+        display: inline-flex; font-size: 9px; font-weight: 600;
+        background: #eef2fc; color: #3a5fa0; border: 1px solid #b8c8ef;
+        border-radius: 3px; padding: 1px 5px; margin-left: 4px;
+        text-transform: uppercase; letter-spacing: 0.04em;
+      }
+
+      /* -- Preview card -- */
       .preview-card { margin-bottom: 14px; }
       .preview-header {
         font-size: 11px; font-weight: 700; color: #999;
@@ -401,7 +538,7 @@ export function reviewView(submission: Submission): string {
       }
       .preview-date { font-size: 11.5px; color: #bbb; }
 
-      /* ── Submission meta card ── */
+      /* -- Submission meta card -- */
       .submission-meta-card { padding: 16px 18px; }
       .meta-title {
         font-size: 11px; font-weight: 700; color: #bbb;
@@ -418,8 +555,10 @@ export function reviewView(submission: Submission): string {
       .meta-val { color: #333; }
       .meta-val.mono { font-family: 'SFMono-Regular', 'Consolas', 'Courier New', monospace; font-size: 11px; color: #666; }
       .meta-reason .meta-val { color: #a03a3a; }
+      .portal-context-card { padding: 16px 18px; }
+      .portal-context-card .meta-title { margin-bottom: 10px; }
 
-      /* ── Action bar ── */
+      /* -- Action bar -- */
       .action-bar {
         position: fixed; bottom: 0; left: 0; right: 0;
         background: #fff; border-top: 1px solid #e8ece8;
@@ -430,7 +569,7 @@ export function reviewView(submission: Submission): string {
       }
       .action-bar-right { display: flex; align-items: center; gap: 10px; }
 
-      /* ── Rejection modal ── */
+      /* -- Rejection modal -- */
       .modal-overlay {
         position: fixed; inset: 0;
         background: rgba(0,0,0,0.45);
@@ -474,15 +613,15 @@ export function reviewView(submission: Submission): string {
     </style>
 
     <script>
-      const overlay     = document.getElementById('rejectOverlay');
-      const rejectBtn   = document.getElementById('rejectBtn');
-      const modalClose  = document.getElementById('modalClose');
-      const cancelBtn   = document.getElementById('modalCancelBtn');
-      const confirmBtn  = document.getElementById('confirmRejectBtn');
-      const reasonInput = document.getElementById('rejectionReasonInput');
-      const actionInput = document.getElementById('_action');
-      const reasonHidden = document.getElementById('rejectionReasonHidden');
-      const form        = document.getElementById('reviewForm');
+      var overlay     = document.getElementById('rejectOverlay');
+      var rejectBtn   = document.getElementById('rejectBtn');
+      var modalClose  = document.getElementById('modalClose');
+      var cancelBtn   = document.getElementById('modalCancelBtn');
+      var confirmBtn  = document.getElementById('confirmRejectBtn');
+      var reasonInput = document.getElementById('rejectionReasonInput');
+      var actionInput = document.getElementById('_action');
+      var reasonHidden = document.getElementById('rejectionReasonHidden');
+      var form        = document.getElementById('reviewForm');
 
       function openModal() {
         overlay.style.display = 'flex';
@@ -503,7 +642,7 @@ export function reviewView(submission: Submission): string {
       });
 
       confirmBtn.addEventListener('click', function() {
-        const reason = reasonInput.value.trim();
+        var reason = reasonInput.value.trim();
         if (!reason) {
           reasonInput.style.borderColor = '#c0392b';
           reasonInput.style.boxShadow = '0 0 0 3px rgba(192,57,43,0.12)';
@@ -524,6 +663,22 @@ export function reviewView(submission: Submission): string {
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape' && overlay.style.display !== 'none') closeModal();
       });
+
+      // Field config: add new row
+      var fieldRowCount = ${fields.length};
+
+      function addFieldRow() {
+        var tbody = document.querySelector('#fieldConfigTable tbody');
+        var i = fieldRowCount++;
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><input class="form-input" type="text" name="fields[' + i + '][fieldName]" placeholder="field_name" style="padding:6px 8px;font-size:12px;" /></td>' +
+          '<td><input class="form-input" type="text" name="fields[' + i + '][displayName]" placeholder="Display Name" style="padding:6px 8px;font-size:12px;" /></td>' +
+          '<td><select class="form-select" name="fields[' + i + '][sfFieldType]" style="padding:6px 8px;font-size:12px;">${sfTypeOptions}</select></td>' +
+          '<td style="text-align:center;"><input type="checkbox" name="fields[' + i + '][visible]" value="1" checked style="width:16px;height:16px;accent-color:#2d7a4f;" /></td>' +
+          '<td><input class="form-input" type="number" name="fields[' + i + '][sortOrder]" value="' + i + '" style="padding:6px 8px;font-size:12px;width:60px;" /></td>';
+        tbody.appendChild(tr);
+      }
     </script>
   `;
 
