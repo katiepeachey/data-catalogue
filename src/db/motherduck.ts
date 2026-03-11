@@ -3,19 +3,16 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const DATABASE = process.env.MOTHERDUCK_DATABASE;
-const TOKEN = process.env.MD_SERVICE_ACCOUNT_ACCESS_TOKEN;
-
-if (!DATABASE || !TOKEN) {
-  throw new Error('Missing MOTHERDUCK_DATABASE or MD_SERVICE_ACCOUNT_ACCESS_TOKEN in .env');
-}
-
-const CONNECTION_STRING = `md:${DATABASE}?motherduck_token=${TOKEN}`;
-
 let dbInstance: duckdb.Database | null = null;
 
 function getDb(): duckdb.Database {
   if (!dbInstance) {
+    const DATABASE = process.env.MOTHERDUCK_DATABASE;
+    const TOKEN = process.env.MD_SERVICE_ACCOUNT_ACCESS_TOKEN;
+    if (!DATABASE || !TOKEN) {
+      throw new Error('Missing MOTHERDUCK_DATABASE or MD_SERVICE_ACCOUNT_ACCESS_TOKEN in .env');
+    }
+    const CONNECTION_STRING = `md:${DATABASE}?motherduck_token=${TOKEN}`;
     dbInstance = new duckdb.Database(CONNECTION_STRING);
   }
   return dbInstance;

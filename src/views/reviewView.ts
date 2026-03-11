@@ -41,7 +41,7 @@ function labelCheckbox(label: { value: Label; display: string }, isChecked: bool
 
 function previewSourceBadge(source: Source): string {
   const kernelBadge = `<span class="source-badge source-kernel">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px;flex-shrink:0;">
       <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
     </svg>Kernel AI</span>`;
   const linkedinBadge = `<span class="source-badge source-linkedin">
@@ -108,7 +108,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
       </td>
       <td style="text-align:center;">
         <input type="checkbox" name="fields[${i}][visible]" value="1"${f.visible ? ' checked' : ''}
-          style="width:16px;height:16px;accent-color:#2d7a4f;" />
+          style="width:16px;height:16px;accent-color:#8fb49a;" />
       </td>
       <td>
         <input class="form-input" type="number" name="fields[${i}][sortOrder]"
@@ -677,7 +677,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
           '<td><input class="form-input" type="text" name="fields[' + i + '][fieldName]" placeholder="field_name" style="padding:6px 8px;font-size:12px;" /></td>' +
           '<td><input class="form-input" type="text" name="fields[' + i + '][displayName]" placeholder="Display Name" style="padding:6px 8px;font-size:12px;" /></td>' +
           '<td><select class="form-select" name="fields[' + i + '][sfFieldType]" style="padding:6px 8px;font-size:12px;">${sfTypeOptions}</select></td>' +
-          '<td style="text-align:center;"><input type="checkbox" name="fields[' + i + '][visible]" value="1" checked style="width:16px;height:16px;accent-color:#2d7a4f;" /></td>' +
+          '<td style="text-align:center;"><input type="checkbox" name="fields[' + i + '][visible]" value="1" checked style="width:16px;height:16px;accent-color:#8fb49a;" /></td>' +
           '<td><input class="form-input" type="number" name="fields[' + i + '][sortOrder]" value="' + i + '" style="padding:6px 8px;font-size:12px;width:60px;" /></td>';
         tbody.appendChild(tr);
       }

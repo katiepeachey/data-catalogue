@@ -209,7 +209,7 @@ export function queueView(submissions: SubmissionWithMeta[], flashMsg?: string):
         left: 2px; bottom: 2px; background: #fff;
         border-radius: 50%; transition: transform 0.2s;
       }
-      .toggle-switch input:checked + .toggle-slider { background: #2d7a4f; }
+      .toggle-switch input:checked + .toggle-slider { background: #8fb49a; }
       .toggle-switch input:checked + .toggle-slider::before { transform: translateX(16px); }
     </style>
 

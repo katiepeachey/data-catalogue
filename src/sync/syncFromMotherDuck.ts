@@ -173,14 +173,26 @@ export async function syncFromMotherDuck(): Promise<SyncResult> {
 
     // Clean up orphaned records: remove non-admin-edited datapoints whose IDs
     // were not in this sync (covers old cf_* format records and removed agents).
+    // Must delete datapoint_fields FIRST (no ON DELETE CASCADE on the FK).
     const syncedIds = datapoints.map((dp) => dp.id);
     if (syncedIds.length > 0) {
       const placeholders = syncedIds.map(() => '?').join(', ');
-      db.prepare(
-        `DELETE FROM datapoints WHERE admin_edited = 0 AND id NOT IN (${placeholders}) AND id LIKE 'agent_%'`
-      ).run(...syncedIds);
-      // Also wipe legacy cf_* records (old ID format) that weren't admin-edited
-      db.prepare(`DELETE FROM datapoints WHERE id LIKE 'cf_%' AND admin_edited = 0`).run();
+      // Find orphaned agent_* IDs
+      const orphanedAgents = (db.prepare(
+        `SELECT id FROM datapoints WHERE admin_edited = 0 AND id NOT IN (${placeholders}) AND id LIKE 'agent_%'`
+      ).all(...syncedIds) as { id: string }[]).map((r) => r.id);
+      // Find legacy cf_* IDs
+      const legacyCf = (db.prepare(
+        `SELECT id FROM datapoints WHERE id LIKE 'cf_%' AND admin_edited = 0`
+      ).all() as { id: string }[]).map((r) => r.id);
+
+      const toDelete = [...orphanedAgents, ...legacyCf];
+      if (toDelete.length > 0) {
+        const dp = toDelete.map(() => '?').join(', ');
+        db.prepare(`DELETE FROM datapoint_fields WHERE datapoint_id IN (${dp})`).run(...toDelete);
+        db.prepare(`DELETE FROM datapoints WHERE id IN (${dp})`).run(...toDelete);
+        console.log(`Cleaned up ${toDelete.length} orphaned datapoint(s)`);
+      }
     }
 
     result.datapointsUnchanged = existingRows.length - result.datapointsUpdated;
