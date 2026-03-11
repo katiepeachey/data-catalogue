@@ -114,7 +114,9 @@
       background: #f0f2f0; color: #555; border: 1px solid #e0e4e0;
       border-radius: 10px; padding: 2px 8px; white-space: nowrap;
     }
-    .value-chip.overflow { background: #eef2fc; color: #3a5fa0; border-color: #b8c8ef; cursor: default; }
+    .value-chip-hidden { display: none; }
+    .value-chip.overflow { background: #eef2fc; color: #3a5fa0; border-color: #b8c8ef; cursor: pointer; transition: opacity 0.15s; }
+    .value-chip.overflow:hover { opacity: 0.75; }
     .values-cell { display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-start; }
     .data-type-label { font-size: 11px; color: #aaa; font-style: italic; }
 
@@ -350,13 +352,13 @@ function renderTable() {
             var opts = parsed.options || [];
             if (opts.length > 0) {
               var MAX_SHOW = 4;
-              var visible = opts.slice(0, MAX_SHOW);
               var extra = opts.length - MAX_SHOW;
               var html = '<div class="values-cell">' +
-                visible.map(function(o) {
-                  return '<span class="value-chip">' + escapeHtml(o.name || '') + '</span>';
+                opts.map(function(o, idx) {
+                  var hidden = idx >= MAX_SHOW ? ' value-chip-hidden' : '';
+                  return '<span class="value-chip' + hidden + '">' + escapeHtml(o.name || '') + '</span>';
                 }).join('') +
-                (extra > 0 ? '<span class="value-chip overflow">+' + extra + ' more</span>' : '') +
+                (extra > 0 ? '<span class="value-chip overflow" onclick="expandValues(this)">+' + extra + ' more</span>' : '') +
                 '</div>';
               return html;
             }
@@ -391,6 +393,15 @@ function renderTable() {
 
   document.getElementById('totalCount').textContent = totalVisible;
   document.getElementById('emptyState').style.display = totalVisible === 0 ? 'block' : 'none';
+}
+
+function expandValues(btn) {
+  var cell = btn.parentNode;
+  var hidden = cell.querySelectorAll('.value-chip-hidden');
+  for (var i = 0; i < hidden.length; i++) {
+    hidden[i].classList.remove('value-chip-hidden');
+  }
+  btn.style.display = 'none';
 }
 
 loadDatapoints();
