@@ -154,26 +154,30 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
           value="${f.sortOrder}" style="padding:6px 8px;font-size:12px;width:60px;" />
       </td>
       <td>
-        <!-- Hidden input holds final value (plain text or JSON) -->
+        <!-- Hidden input holds final submitted value (plain text or JSON) -->
         <input type="hidden" name="fields[${i}][exampleValue]" id="exVal_${i}"
           value="${escapeHtml(f.exampleValue || '')}" />
-        <!-- Single mode -->
-        <div id="single_${i}" style="${isPerOption ? 'display:none;' : ''}">
-          <input class="form-input" type="text" id="singleInput_${i}"
-            value="${escapeHtml(exampleSingle)}"
-            placeholder="e.g. $12M"
-            style="padding:6px 8px;font-size:12px;"
-            oninput="document.getElementById('exVal_${i}').value=this.value" />
-        </div>
-        <!-- Per-option mode -->
-        <div id="peropt_${i}" style="${isPerOption ? '' : 'display:none;'}">
-          ${perOptionInputs}
-        </div>
         ${hasOptions ? `
-        <button type="button" class="per-opt-toggle" id="togBtn_${i}"
-          onclick="togglePerOption(${i})">
-          ${isPerOption ? '↑ Single example' : '↓ Set per option'}
-        </button>` : ''}
+        <!-- Single example (shown when details is closed) -->
+        <input class="form-input" type="text" id="singleInput_${i}"
+          value="${escapeHtml(exampleSingle)}"
+          placeholder="e.g. $12M"
+          style="padding:6px 8px;font-size:12px;${isPerOption ? 'display:none;' : ''}"
+          oninput="document.getElementById('exVal_${i}').value=this.value" />
+        <!-- Per-option examples — native expand/collapse, no JS needed for toggle -->
+        <details class="per-opt-details" id="peropt_details_${i}"${isPerOption ? ' open' : ''}>
+          <summary class="per-opt-toggle">↓ Per option examples</summary>
+          <div id="peropt_${i}" style="margin-top:6px;">
+            ${perOptionInputs}
+          </div>
+        </details>
+        ` : `
+        <input class="form-input" type="text" id="singleInput_${i}"
+          value="${escapeHtml(exampleSingle)}"
+          placeholder="e.g. $12M"
+          style="padding:6px 8px;font-size:12px;"
+          oninput="document.getElementById('exVal_${i}').value=this.value" />
+        `}
       </td>
     </tr>`;
   }).join('');
@@ -529,14 +533,17 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         background: #f0f6f1; border: 1px solid #c8d5c9; border-radius: 20px;
         padding: 2px 8px; white-space: nowrap; min-width: 60px; text-align: center;
       }
-      .per-opt-toggle {
+      .per-opt-details { margin-top: 5px; }
+      .per-opt-details summary.per-opt-toggle {
         display: inline-flex; align-items: center; gap: 4px;
         font-size: 11px; font-weight: 600; color: #3a6b4a;
         background: #eaf5ec; border: 1px solid #b8d8c0; border-radius: 6px;
-        cursor: pointer; padding: 3px 8px; margin-top: 5px;
-        font-family: inherit; transition: background 0.15s;
+        cursor: pointer; padding: 3px 8px;
+        list-style: none; user-select: none;
       }
-      .per-opt-toggle:hover { background: #d4edda; }
+      .per-opt-details summary.per-opt-toggle::-webkit-details-marker { display: none; }
+      .per-opt-details summary.per-opt-toggle:hover { background: #d4edda; }
+      .per-opt-details[open] summary.per-opt-toggle { background: #d4edda; }
 
       /* -- Field config table -- */
       .field-config-table-wrap {
@@ -733,18 +740,6 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         if (e.key === 'Escape' && overlay.style.display !== 'none') closeModal();
       });
 
-      // Flush all per-option example hidden inputs before form submit
-      function flushAllExamples() {
-        var totalFields = ${fields.length + 50}; // cover dynamically added rows
-        for (var fi = 0; fi < totalFields; fi++) {
-          var peroptEl = document.getElementById('peropt_' + fi);
-          if (peroptEl && peroptEl.style.display !== 'none') {
-            rebuildExampleJson(fi);
-          }
-        }
-      }
-
-      // Per-option example toggle
       var classifierOpts = ${classifierOptionsJson};
 
       function rebuildExampleJson(i) {
@@ -758,39 +753,23 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         document.getElementById('exVal_' + i).value = Object.keys(map).length ? JSON.stringify(map) : '';
       }
 
-      function togglePerOption(i) {
-        var single = document.getElementById('single_' + i);
-        var peropt = document.getElementById('peropt_' + i);
-        var btn    = document.getElementById('togBtn_' + i);
-        var hidden = document.getElementById('exVal_' + i);
-        var isOn = peropt.style.display !== 'none';
-        if (isOn) {
-          // switching to single
-          peropt.style.display = 'none';
-          single.style.display = '';
-          btn.textContent = '↓ Set per option';
-          hidden.value = document.getElementById('singleInput_' + i).value;
-        } else {
-          // switching to per-option — ensure option rows exist
-          var tbody = document.getElementById('peropt_' + i);
-          if (tbody.children.length === 0) {
-            classifierOpts.forEach(function(opt) {
-              var div = document.createElement('div');
-              div.className = 'per-opt-row';
-              div.innerHTML =
-                '<span class="per-opt-label">' + opt + '</span>' +
-                '<input class="form-input per-opt-input" type="text" data-opt="' + opt + '"' +
-                ' placeholder="Example for ' + opt + '..." style="padding:5px 8px;font-size:11px;"' +
-                ' oninput="rebuildExampleJson(' + i + ')" />';
-              tbody.appendChild(div);
-            });
+      // Attach toggle listeners to all per-option <details> elements
+      document.querySelectorAll('.per-opt-details').forEach(function(det) {
+        var idx = parseInt(det.id.replace('peropt_details_', ''), 10);
+        var singleInp = document.getElementById('singleInput_' + idx);
+        det.addEventListener('toggle', function() {
+          if (det.open) {
+            // Expanded: hide single input, rebuild JSON from per-option inputs
+            if (singleInp) singleInp.style.display = 'none';
+            rebuildExampleJson(idx);
+          } else {
+            // Collapsed: show single input, set hidden to its value
+            if (singleInp) singleInp.style.display = '';
+            var hidden = document.getElementById('exVal_' + idx);
+            if (hidden && singleInp) hidden.value = singleInp.value;
           }
-          single.style.display = 'none';
-          peropt.style.display = '';
-          btn.textContent = '↑ Single example';
-          rebuildExampleJson(i);
-        }
-      }
+        });
+      });
 
       // Field config: add new row
       var fieldRowCount = ${fields.length};
@@ -838,9 +817,18 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         td6.appendChild(singleDiv);
 
         if (classifierOpts.length > 0) {
+          var details = document.createElement('details');
+          details.className = 'per-opt-details';
+          details.id = 'peropt_details_' + i;
+
+          var summary = document.createElement('summary');
+          summary.className = 'per-opt-toggle';
+          summary.textContent = '↓ Per option examples';
+          details.appendChild(summary);
+
           var peroptDiv = document.createElement('div');
           peroptDiv.id = 'peropt_' + i;
-          peroptDiv.style.display = 'none';
+          peroptDiv.style.marginTop = '6px';
           classifierOpts.forEach(function(opt) {
             var row = document.createElement('div');
             row.className = 'per-opt-row';
@@ -857,16 +845,19 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
             row.appendChild(lbl); row.appendChild(optInp);
             peroptDiv.appendChild(row);
           });
-          td6.appendChild(peroptDiv);
+          details.appendChild(peroptDiv);
+          td6.appendChild(details);
 
-          var togBtn = document.createElement('button');
-          togBtn.type = 'button';
-          togBtn.className = 'per-opt-toggle';
-          togBtn.id = 'togBtn_' + i;
-          togBtn.style.marginTop = '4px';
-          togBtn.textContent = '↓ Set per option';
-          togBtn.addEventListener('click', function() { togglePerOption(i); });
-          td6.appendChild(togBtn);
+          // Attach toggle listener
+          details.addEventListener('toggle', function() {
+            if (details.open) {
+              singleInp.style.display = 'none';
+              rebuildExampleJson(i);
+            } else {
+              singleInp.style.display = '';
+              hidden.value = singleInp.value;
+            }
+          });
         }
 
         tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
