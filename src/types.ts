@@ -62,4 +62,5 @@ export interface DatapointField {
   visible: boolean;
   sortOrder: number;
   adminEdited: boolean;
+  exampleValue?: string | null;
 }

@@ -89,7 +89,46 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
 
   const sfTypeOptions = SF_FIELD_TYPES.map((t) => `<option value="${t}">${t}</option>`).join('');
 
-  const fieldConfigRows = fields.map((f, i) => `
+  // Classifier options for per-option example UI
+  let classifierOptions: string[] = [];
+  if (submission.classifierOptionsSample) {
+    try {
+      const parsed = JSON.parse(submission.classifierOptionsSample);
+      classifierOptions = (parsed.options || []).map((o: { name: string }) => o.name).filter(Boolean);
+    } catch { /* ignore */ }
+  }
+  const hasOptions = classifierOptions.length > 0;
+  const classifierOptionsJson = JSON.stringify(classifierOptions);
+
+  const fieldConfigRows = fields.map((f, i) => {
+    // Determine if this field has per-option examples
+    let isPerOption = false;
+    let perOptionMap: Record<string, string> = {};
+    if (f.exampleValue) {
+      try {
+        const parsed = JSON.parse(f.exampleValue);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          isPerOption = true;
+          perOptionMap = parsed;
+        }
+      } catch { /* plain text */ }
+    }
+    const exampleSingle = isPerOption ? '' : (f.exampleValue || '');
+
+    // Per-option inputs (one per classifier option)
+    const perOptionInputs = hasOptions ? classifierOptions.map((opt) =>
+      `<div class="per-opt-row">
+        <span class="per-opt-label">${escapeHtml(opt)}</span>
+        <input class="form-input per-opt-input" type="text"
+          data-opt="${escapeHtml(opt)}"
+          value="${escapeHtml(perOptionMap[opt] || '')}"
+          placeholder="Example for ${escapeHtml(opt)}..."
+          style="padding:5px 8px;font-size:11px;"
+          oninput="rebuildExampleJson(${i})" />
+      </div>`
+    ).join('') : '';
+
+    return `
     <tr>
       <td>
         <span class="field-tag" style="font-size:11px;">${escapeHtml(f.fieldName)}</span>
@@ -114,8 +153,31 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         <input class="form-input" type="number" name="fields[${i}][sortOrder]"
           value="${f.sortOrder}" style="padding:6px 8px;font-size:12px;width:60px;" />
       </td>
-    </tr>
-  `).join('');
+      <td>
+        <!-- Hidden input holds final value (plain text or JSON) -->
+        <input type="hidden" name="fields[${i}][exampleValue]" id="exVal_${i}"
+          value="${escapeHtml(f.exampleValue || '')}" />
+        <!-- Single mode -->
+        <div id="single_${i}" style="${isPerOption ? 'display:none;' : ''}">
+          <input class="form-input" type="text" id="singleInput_${i}"
+            value="${escapeHtml(exampleSingle)}"
+            placeholder="e.g. $12M"
+            style="padding:6px 8px;font-size:12px;"
+            oninput="document.getElementById('exVal_${i}').value=this.value" />
+        </div>
+        <!-- Per-option mode -->
+        <div id="peropt_${i}" style="${isPerOption ? '' : 'display:none;'}">
+          ${perOptionInputs}
+        </div>
+        ${hasOptions ? `
+        <button type="button" class="per-opt-toggle" id="togBtn_${i}"
+          onclick="togglePerOption(${i})"
+          style="margin-top:4px;">
+          ${isPerOption ? 'Single example' : 'Per option ↓'}
+        </button>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
 
   const body = `
     <div class="review-layout">
@@ -164,11 +226,12 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
                 <table class="field-config-table" id="fieldConfigTable">
                   <thead>
                     <tr>
-                      <th style="width:25%;">Original Name</th>
-                      <th style="width:25%;">Display Name</th>
-                      <th style="width:22%;">SF Field Type</th>
-                      <th style="width:13%;">Visible</th>
-                      <th style="width:15%;">Order</th>
+                      <th style="width:18%;">Original Name</th>
+                      <th style="width:18%;">Display Name</th>
+                      <th style="width:16%;">SF Field Type</th>
+                      <th style="width:10%;">Visible</th>
+                      <th style="width:10%;">Order</th>
+                      <th style="width:28%;">Example</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -460,6 +523,20 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         cursor: pointer; accent-color: #2d7a4f;
       }
 
+      /* -- Per-option example inputs -- */
+      .per-opt-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+      .per-opt-label {
+        font-size: 10px; font-weight: 700; color: #343539;
+        background: #f0f6f1; border: 1px solid #c8d5c9; border-radius: 20px;
+        padding: 2px 8px; white-space: nowrap; min-width: 60px; text-align: center;
+      }
+      .per-opt-toggle {
+        font-size: 10px; color: #8fb49a; background: none; border: none;
+        cursor: pointer; padding: 0; text-decoration: underline;
+        font-family: inherit;
+      }
+      .per-opt-toggle:hover { color: #343539; }
+
       /* -- Field config table -- */
       .field-config-table-wrap {
         background: #fafcfa; border: 1px solid #e8ece8;
@@ -655,6 +732,54 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         if (e.key === 'Escape' && overlay.style.display !== 'none') closeModal();
       });
 
+      // Per-option example toggle
+      var classifierOpts = ${classifierOptionsJson};
+
+      function rebuildExampleJson(i) {
+        var inputs = document.querySelectorAll('#peropt_' + i + ' .per-opt-input');
+        var map = {};
+        for (var j = 0; j < inputs.length; j++) {
+          var opt = inputs[j].getAttribute('data-opt');
+          var val = inputs[j].value.trim();
+          if (val) map[opt] = val;
+        }
+        document.getElementById('exVal_' + i).value = Object.keys(map).length ? JSON.stringify(map) : '';
+      }
+
+      function togglePerOption(i) {
+        var single = document.getElementById('single_' + i);
+        var peropt = document.getElementById('peropt_' + i);
+        var btn    = document.getElementById('togBtn_' + i);
+        var hidden = document.getElementById('exVal_' + i);
+        var isOn = peropt.style.display !== 'none';
+        if (isOn) {
+          // switching to single
+          peropt.style.display = 'none';
+          single.style.display = '';
+          btn.textContent = 'Per option ↓';
+          hidden.value = document.getElementById('singleInput_' + i).value;
+        } else {
+          // switching to per-option — ensure option rows exist
+          var tbody = document.getElementById('peropt_' + i);
+          if (tbody.children.length === 0) {
+            classifierOpts.forEach(function(opt) {
+              var div = document.createElement('div');
+              div.className = 'per-opt-row';
+              div.innerHTML =
+                '<span class="per-opt-label">' + opt + '</span>' +
+                '<input class="form-input per-opt-input" type="text" data-opt="' + opt + '"' +
+                ' placeholder="Example for ' + opt + '..." style="padding:5px 8px;font-size:11px;"' +
+                ' oninput="rebuildExampleJson(' + i + ')" />';
+              tbody.appendChild(div);
+            });
+          }
+          single.style.display = 'none';
+          peropt.style.display = '';
+          btn.textContent = 'Single example';
+          rebuildExampleJson(i);
+        }
+      }
+
       // Field config: add new row
       var fieldRowCount = ${fields.length};
 
@@ -662,12 +787,26 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         var tbody = document.querySelector('#fieldConfigTable tbody');
         var i = fieldRowCount++;
         var tr = document.createElement('tr');
-        tr.innerHTML =
-          '<td><input class="form-input" type="text" name="fields[' + i + '][fieldName]" placeholder="field_name" style="padding:6px 8px;font-size:12px;" /></td>' +
-          '<td><input class="form-input" type="text" name="fields[' + i + '][displayName]" placeholder="Display Name" style="padding:6px 8px;font-size:12px;" /></td>' +
-          '<td><select class="form-select" name="fields[' + i + '][sfFieldType]" style="padding:6px 8px;font-size:12px;">${sfTypeOptions}</select></td>' +
-          '<td style="text-align:center;"><input type="checkbox" name="fields[' + i + '][visible]" value="1" checked style="width:16px;height:16px;accent-color:#8fb49a;" /></td>' +
-          '<td><input class="form-input" type="number" name="fields[' + i + '][sortOrder]" value="' + i + '" style="padding:6px 8px;font-size:12px;width:60px;" /></td>';
+        var sel = document.createElement('select');
+        sel.className = 'form-select';
+        sel.name = 'fields[' + i + '][sfFieldType]';
+        sel.style.cssText = 'padding:6px 8px;font-size:12px;';
+        sel.innerHTML = '${sfTypeOptions}';
+        var td1 = document.createElement('td');
+        td1.innerHTML = '<input class="form-input" type="text" name="fields[' + i + '][fieldName]" placeholder="field_name" style="padding:6px 8px;font-size:12px;" />';
+        var td2 = document.createElement('td');
+        td2.innerHTML = '<input class="form-input" type="text" name="fields[' + i + '][displayName]" placeholder="Display Name" style="padding:6px 8px;font-size:12px;" />';
+        var td3 = document.createElement('td'); td3.appendChild(sel);
+        var td4 = document.createElement('td');
+        td4.style.textAlign = 'center';
+        td4.innerHTML = '<input type="checkbox" name="fields[' + i + '][visible]" value="1" checked style="width:16px;height:16px;accent-color:#8fb49a;" />';
+        var td5 = document.createElement('td');
+        td5.innerHTML = '<input class="form-input" type="number" name="fields[' + i + '][sortOrder]" value="' + i + '" style="padding:6px 8px;font-size:12px;width:60px;" />';
+        var td6 = document.createElement('td');
+        td6.innerHTML = '<input type="hidden" name="fields[' + i + '][exampleValue]" id="exVal_' + i + '" />' +
+          '<input class="form-input" type="text" id="singleInput_' + i + '" placeholder="e.g. $12M" style="padding:6px 8px;font-size:12px;" oninput="document.getElementById(\'exVal_' + i + '\').value=this.value" />';
+        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
+        tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6);
         tbody.appendChild(tr);
       }
     </script>

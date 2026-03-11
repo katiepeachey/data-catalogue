@@ -87,13 +87,14 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       const sfFieldType = (rf.sfFieldType as SfFieldType) || 'Text';
       const visible = rf.visible === '1';
       const sortOrder = parseInt(rf.sortOrder || String(fi), 10) || fi;
+      const exampleValue = (rf as any).exampleValue || null;
 
       if (existingFieldNames.has(fieldName)) {
-        fieldUpdates.push({ fieldName, displayName, sfFieldType, visible, sortOrder });
+        fieldUpdates.push({ fieldName, displayName, sfFieldType, visible, sortOrder, exampleValue });
       } else {
         // New field added manually via "Add Field" button
-        addFieldToDatapoint(submission.id, fieldName, displayName, sfFieldType);
-        updateFieldConfig(submission.id, [{ fieldName, displayName, sfFieldType, visible, sortOrder }]);
+        addFieldToDatapoint(submission.id, fieldName, displayName, sfFieldType, exampleValue);
+        updateFieldConfig(submission.id, [{ fieldName, displayName, sfFieldType, visible, sortOrder, exampleValue }]);
       }
     }
 

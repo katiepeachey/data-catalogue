@@ -10,6 +10,7 @@ interface FieldRow {
   visible: number;
   sort_order: number;
   admin_edited: number;
+  example_value: string | null;
 }
 
 function rowToField(row: FieldRow): DatapointField {
@@ -22,6 +23,7 @@ function rowToField(row: FieldRow): DatapointField {
     visible: row.visible === 1,
     sortOrder: row.sort_order,
     adminEdited: row.admin_edited === 1,
+    exampleValue: row.example_value || null,
   };
 }
 
@@ -78,6 +80,7 @@ export interface FieldConfigUpdate {
   sfFieldType: SfFieldType;
   visible: boolean;
   sortOrder: number;
+  exampleValue?: string | null;
 }
 
 /** Bulk update field configuration from admin UI */
@@ -85,13 +88,17 @@ export function updateFieldConfig(datapointId: string, fields: FieldConfigUpdate
   const db = getLocalDb();
   const updateStmt = db.prepare(`
     UPDATE datapoint_fields
-    SET display_name = ?, sf_field_type = ?, visible = ?, sort_order = ?, admin_edited = 1
+    SET display_name = ?, sf_field_type = ?, visible = ?, sort_order = ?, example_value = ?, admin_edited = 1
     WHERE datapoint_id = ? AND field_name = ?
   `);
 
   const updateMany = db.transaction((items: FieldConfigUpdate[]) => {
     for (const f of items) {
-      updateStmt.run(f.displayName, f.sfFieldType, f.visible ? 1 : 0, f.sortOrder, datapointId, f.fieldName);
+      updateStmt.run(
+        f.displayName, f.sfFieldType, f.visible ? 1 : 0,
+        f.sortOrder, f.exampleValue ?? null,
+        datapointId, f.fieldName
+      );
     }
   });
 
@@ -99,14 +106,20 @@ export function updateFieldConfig(datapointId: string, fields: FieldConfigUpdate
 }
 
 /** Add a new field manually (admin) */
-export function addField(datapointId: string, fieldName: string, displayName: string, sfFieldType: SfFieldType): void {
+export function addField(
+  datapointId: string,
+  fieldName: string,
+  displayName: string,
+  sfFieldType: SfFieldType,
+  exampleValue?: string | null
+): void {
   const db = getLocalDb();
   const maxOrder = db.prepare(
     'SELECT COALESCE(MAX(sort_order), -1) as max_order FROM datapoint_fields WHERE datapoint_id = ?'
   ).get(datapointId) as { max_order: number };
 
   db.prepare(`
-    INSERT INTO datapoint_fields (datapoint_id, field_name, display_name, sf_field_type, sort_order, admin_edited)
-    VALUES (?, ?, ?, ?, ?, 1)
-  `).run(datapointId, fieldName, displayName, sfFieldType, maxOrder.max_order + 1);
+    INSERT INTO datapoint_fields (datapoint_id, field_name, display_name, sf_field_type, sort_order, admin_edited, example_value)
+    VALUES (?, ?, ?, ?, ?, 1, ?)
+  `).run(datapointId, fieldName, displayName, sfFieldType, maxOrder.max_order + 1, exampleValue ?? null);
 }

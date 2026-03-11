@@ -136,12 +136,55 @@
 
     /* -- Source badges -- */
     .source-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; border-radius: 6px; padding: 3px 9px; white-space: nowrap; }
-    .source-kernel   { background: #f0f6f1; color: #343539; border: 1px solid #c8d5c9; }
+    .source-kernel   { background: #f0f6f1; color: #343539; border: 1px solid #c8d5c9; padding: 4px 8px; }
     .source-linkedin { background: #eaf2fc; color: #0a66c2; border: 1px solid #b3d0ef; }
     .source-badge svg { width: 11px; height: 11px; flex-shrink: 0; }
+    .source-kernel img { height: 16px; width: auto; display: block; }
 
     .date-cell { font-size: 12px; color: #aaa; white-space: nowrap; }
     .empty-state { text-align: center; padding: 60px 20px; color: #bbb; font-size: 14px; display: none; }
+
+    /* -- Expandable rows -- */
+    tr.data-row { cursor: pointer; }
+    tr.expand-row td { padding: 0; border-bottom: 1px solid #e8ece8; }
+    tr.expand-row.hidden { display: none; }
+    .expand-panel {
+      padding: 16px 20px 20px;
+      background: #fafcfa;
+      border-top: 1px solid #eaeeea;
+    }
+    .expand-chips {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-bottom: 14px;
+    }
+    .option-chip {
+      display: inline-flex; align-items: center;
+      font-size: 11px; font-weight: 600;
+      border-radius: 20px; padding: 4px 12px;
+      cursor: pointer; border: 1.5px solid transparent;
+      transition: all 0.15s; white-space: nowrap;
+      background: #f0f2f0; color: #555; border-color: #e0e4e0;
+    }
+    .option-chip:hover { opacity: 0.8; }
+    .option-chip.active {
+      color: #fff;
+    }
+    .expand-fields-table {
+      width: 100%; border-collapse: collapse;
+    }
+    .expand-fields-table td {
+      padding: 7px 12px; border-bottom: 1px solid #f0f2f0;
+      font-size: 12.5px; vertical-align: top;
+    }
+    .expand-fields-table tr:last-child td { border-bottom: none; }
+    .expand-field-name {
+      font-weight: 600; color: #343539; white-space: nowrap;
+      width: 30%; font-size: 12px;
+    }
+    .expand-example {
+      color: #555; line-height: 1.5;
+    }
+    .expand-example em { color: #999; font-style: italic; font-size: 11px; }
   </style>
 </head>
 <body>
@@ -386,13 +429,17 @@ function renderTable() {
       })();
 
       var linkedinSvg = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px;flex-shrink:0;"><path d="M20.447 20.452H16.89v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a1.98 1.98 0 0 1-1.983-1.98 1.98 1.98 0 0 1 3.962 0 1.98 1.98 0 0 1-1.979 1.98zm1.961 13.019H3.374V9h3.924v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>';
-      var kernelSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:11px;height:11px;flex-shrink:0;"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+      var kernelLogo = '<img src="kernel-logo.png" style="height:16px;width:auto;display:block;" alt="Kernel AI" />';
       var sourceBadge = dp.source === 'linkedin'
         ? '<span class="source-badge source-linkedin">' + linkedinSvg + 'LinkedIn</span>'
         : dp.source === 'both'
-        ? '<div style="display:flex;gap:4px;flex-wrap:wrap;"><span class="source-badge source-kernel">' + kernelSvg + 'Kernel AI</span><span class="source-badge source-linkedin">' + linkedinSvg + 'LinkedIn</span></div>'
-        : '<span class="source-badge source-kernel">' + kernelSvg + 'Kernel AI</span>';
+        ? '<div style="display:flex;gap:4px;flex-wrap:wrap;"><span class="source-badge source-kernel">' + kernelLogo + '</span><span class="source-badge source-linkedin">' + linkedinSvg + 'LinkedIn</span></div>'
+        : '<span class="source-badge source-kernel">' + kernelLogo + '</span>';
 
+      var rowId = 'row_' + totalVisible;
+
+      tr.setAttribute('data-rowid', rowId);
+      tr.setAttribute('onclick', 'toggleRow("' + rowId + '")');
       tr.innerHTML =
         '<td><div class="sub-labels">' + labelsHtml + '</div></td>' +
         '<td><div class="dp-name">' + escapeHtml(dp.name) + '</div></td>' +
@@ -402,11 +449,118 @@ function renderTable() {
         '<td>' + sourceBadge + '</td>';
 
       tbody.appendChild(tr);
+
+      // Build expand row
+      var expandTr = document.createElement('tr');
+      expandTr.className = 'expand-row hidden';
+      expandTr.id = rowId;
+
+      var expandTd = document.createElement('td');
+      expandTd.colSpan = 6;
+
+      // Get classifier options for chip interaction
+      var chipOpts = [];
+      if (dp.classifierOptionsSample) {
+        try {
+          var parsed = JSON.parse(dp.classifierOptionsSample);
+          chipOpts = (parsed.options || []).map(function(o) { return o.name || ''; }).filter(Boolean);
+        } catch(e) {}
+      }
+
+      var colours = CAT_COLOURS[dp.category] || CAT_COLOURS['Custom Enrichment'];
+
+      // Build chips HTML
+      var chipsHtml = '';
+      if (chipOpts.length > 0) {
+        chipsHtml = '<div class="expand-chips" id="chips_' + rowId + '">' +
+          chipOpts.map(function(opt, idx) {
+            var activeStyle = idx === 0 ? 'background:' + colours.dot + ';border-color:' + colours.dot + ';color:#fff;' : '';
+            return '<span class="option-chip' + (idx === 0 ? ' active' : '') + '"' +
+              ' style="' + activeStyle + '"' +
+              ' data-opt="' + escapeHtml(opt) + '"' +
+              ' data-colour="' + colours.dot + '"' +
+              ' onclick="selectChip(event, \'' + rowId + '\', \'' + escapeHtml(opt) + '\')">' +
+              escapeHtml(opt) + '</span>';
+          }).join('') +
+          '</div>';
+      }
+
+      // Build fields table — each field with its example
+      var firstChip = chipOpts[0] || null;
+      var fieldsTableHtml = '<table class="expand-fields-table">';
+      var dpFields = dp.fields || [];
+      dpFields.forEach(function(f) {
+        var exampleHtml = '';
+        if (f.exampleValue) {
+          try {
+            var exMap = JSON.parse(f.exampleValue);
+            if (exMap && typeof exMap === 'object') {
+              // Per-option: show for first chip by default, wrap in data attrs
+              var firstVal = firstChip ? (exMap[firstChip] || '') : Object.values(exMap)[0] || '';
+              exampleHtml = '<span class="expand-example per-opt-example" data-exmap="' +
+                escapeHtml(JSON.stringify(exMap)) + '">' + escapeHtml(firstVal) + '</span>';
+            } else {
+              exampleHtml = '<span class="expand-example">' + escapeHtml(f.exampleValue) + '</span>';
+            }
+          } catch(e) {
+            exampleHtml = '<span class="expand-example">' + escapeHtml(f.exampleValue) + '</span>';
+          }
+        }
+        fieldsTableHtml +=
+          '<tr>' +
+          '<td class="expand-field-name"><span class="field-tag">' + escapeHtml(f.displayName) + '</span></td>' +
+          '<td>' + exampleHtml + '</td>' +
+          '</tr>';
+      });
+      fieldsTableHtml += '</table>';
+
+      expandTd.innerHTML = '<div class="expand-panel">' + chipsHtml + fieldsTableHtml + '</div>';
+      expandTr.appendChild(expandTd);
+      tbody.appendChild(expandTr);
     });
   });
 
   document.getElementById('totalCount').textContent = totalVisible;
   document.getElementById('emptyState').style.display = totalVisible === 0 ? 'block' : 'none';
+}
+
+function toggleRow(rowId) {
+  var el = document.getElementById(rowId);
+  if (el) el.classList.toggle('hidden');
+}
+
+function selectChip(e, rowId, opt) {
+  e.stopPropagation();
+  var chipsEl = document.getElementById('chips_' + rowId);
+  if (!chipsEl) return;
+
+  // Update chip styles
+  var chips = chipsEl.querySelectorAll('.option-chip');
+  chips.forEach(function(c) {
+    var colour = c.getAttribute('data-colour') || '#8fb49a';
+    if (c.getAttribute('data-opt') === opt) {
+      c.classList.add('active');
+      c.style.background = colour;
+      c.style.borderColor = colour;
+      c.style.color = '#fff';
+    } else {
+      c.classList.remove('active');
+      c.style.background = '#f0f2f0';
+      c.style.borderColor = '#e0e4e0';
+      c.style.color = '#555';
+    }
+  });
+
+  // Update per-option examples in the panel
+  var panel = chipsEl.closest('.expand-panel');
+  if (!panel) return;
+  var perOptEls = panel.querySelectorAll('.per-opt-example');
+  perOptEls.forEach(function(el) {
+    try {
+      var map = JSON.parse(el.getAttribute('data-exmap') || '{}');
+      el.textContent = map[opt] || '';
+    } catch(e) {}
+  });
 }
 
 function expandValues(btn) {
