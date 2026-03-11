@@ -193,7 +193,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
             <span class="status-badge ${statusClass}">${statusLabel}</span>
           </div>
 
-          <form id="reviewForm" method="POST" action="/admin/review/${escapeHtml(submission.id)}" onsubmit="flushAllExamples()">
+          <form id="reviewForm" method="POST" action="/admin/review/${escapeHtml(submission.id)}">
             <input type="hidden" name="_action" id="_action" value="approve" />
             <input type="hidden" name="rejectionReason" id="rejectionReasonHidden" value="" />
 

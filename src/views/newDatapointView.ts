@@ -70,42 +70,29 @@ export function newDatapointView(): string {
               placeholder="Describe what this datapoint captures..."></textarea>
           </div>
 
+          <input type="hidden" name="valueMode" value="schema" />
+
           <div class="form-group">
-            <label class="form-label">Example / Possible Values</label>
-            <div class="value-mode-toggle">
-              <label class="mode-radio">
-                <input type="radio" name="valueMode" value="example" checked onchange="switchValueMode('example')" />
-                Free text example
-              </label>
-              <label class="mode-radio">
-                <input type="radio" name="valueMode" value="schema" onchange="switchValueMode('schema')" />
-                Set fixed options
-              </label>
-            </div>
-
-            <div id="exampleValueSection">
-              <input class="form-input" type="text" id="exampleValue" name="exampleValue"
-                placeholder="e.g. $10M - $50M ARR" style="margin-top:8px;" />
-            </div>
-
-            <div id="schemaSection" style="display:none;margin-top:8px;">
-              <div class="field-config-table-wrap">
-                <table class="field-config-table" style="width:100%;">
-                  <thead>
-                    <tr>
-                      <th>Option Name</th>
-                      <th style="width:60px;"></th>
-                    </tr>
-                  </thead>
-                  <tbody id="optionTableBody"></tbody>
-                </table>
-                <button type="button" class="btn btn-outline btn-sm" style="margin:8px 10px;" onclick="addOptionRow()">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                  Add Option
-                </button>
-              </div>
+            <label class="form-label">
+              Classifier Options
+              <span class="label-hint">If this datapoint outputs a fixed set of values (e.g. B2B, B2C), add them here. Leave empty for free-text outputs.</span>
+            </label>
+            <div class="field-config-table-wrap">
+              <table class="field-config-table" style="width:100%;">
+                <thead>
+                  <tr>
+                    <th>Option Name</th>
+                    <th style="width:60px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="optionTableBody"></tbody>
+              </table>
+              <button type="button" class="btn btn-outline btn-sm" style="margin:8px 10px;" onclick="addOptionRow()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Option
+              </button>
             </div>
           </div>
 
@@ -204,31 +191,13 @@ export function newDatapointView(): string {
     </style>
 
     <script>
-      var currentMode = 'example';
       var fieldCount = 0;
       var sfOpts = '${sfTypeOptions}';
 
       function removeFieldRow(btn) { btn.closest('tr').remove(); }
       function removeOptionRow(btn) {
         btn.closest('tr').remove();
-        if (currentMode === 'schema') syncFieldExamples();
-      }
-
-      function switchValueMode(mode) {
-        currentMode = mode;
-        document.getElementById('exampleValueSection').style.display = mode === 'example' ? '' : 'none';
-        document.getElementById('schemaSection').style.display = mode === 'schema' ? '' : 'none';
-        // Rebuild example cells for all field rows
-        var rows = document.querySelectorAll('#fieldTableBody tr');
-        rows.forEach(function(tr) {
-          var cells = tr.querySelectorAll('td');
-          if (cells.length < 5) return;
-          var exCell = cells[3];
-          var hidden = exCell.querySelector('input[name="fieldExample[]"]');
-          var oldVal = hidden ? hidden.value : '';
-          while (exCell.firstChild) exCell.removeChild(exCell.firstChild);
-          buildExampleCellInto(exCell, oldVal);
-        });
+        syncFieldExamples();
       }
 
       function getOptionNames() {
@@ -253,23 +222,13 @@ export function newDatapointView(): string {
         hidden.name = 'fieldExample[]';
         cell.appendChild(hidden);
 
-        if (currentMode === 'example') {
-          var inp = document.createElement('input');
-          inp.className = 'form-input';
-          inp.type = 'text';
-          inp.placeholder = 'e.g. Acme Corp';
-          inp.style.cssText = 'padding:6px 8px;font-size:12px;';
-          inp.value = existingVal || '';
-          inp.oninput = function() { hidden.value = inp.value; };
-          hidden.value = existingVal || '';
-          cell.appendChild(inp);
-        } else {
-          // per-option mode
+        var opts = getOptionNames();
+        if (opts.length > 0) {
+          // Per-option mode: one input per classifier option
           var existingMap = {};
           try { if (existingVal) existingMap = JSON.parse(existingVal); } catch(e) {}
           var wrap = document.createElement('div');
           wrap.className = 'per-opt-examples';
-          var opts = getOptionNames();
           opts.forEach(function(opt) {
             var row = document.createElement('div');
             row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:4px;';
@@ -290,6 +249,17 @@ export function newDatapointView(): string {
           });
           cell.appendChild(wrap);
           rebuildFieldJson(cell);
+        } else {
+          // Free text mode: single example input
+          var inp = document.createElement('input');
+          inp.className = 'form-input';
+          inp.type = 'text';
+          inp.placeholder = 'e.g. Acme Corp';
+          inp.style.cssText = 'padding:6px 8px;font-size:12px;';
+          inp.value = existingVal || '';
+          inp.oninput = function() { hidden.value = inp.value; };
+          hidden.value = existingVal || '';
+          cell.appendChild(inp);
         }
       }
 
@@ -336,13 +306,13 @@ export function newDatapointView(): string {
         var tbody = document.getElementById('optionTableBody');
         var tr = document.createElement('tr');
         var td1 = document.createElement('td');
-        td1.innerHTML = '<input class="form-input" type="text" name="optionName[]" placeholder="e.g. B2B" style="padding:6px 8px;font-size:12px;" oninput="if(currentMode===\'schema\')syncFieldExamples()" />';
+        td1.innerHTML = '<input class="form-input" type="text" name="optionName[]" placeholder="e.g. B2B" style="padding:6px 8px;font-size:12px;" oninput="syncFieldExamples()" />';
         var td2 = document.createElement('td');
         td2.style.textAlign = 'center';
         td2.innerHTML = '<button type="button" class="btn btn-outline btn-sm" onclick="removeOptionRow(this)" style="padding:4px 8px;font-size:11px;color:#a03a3a;">Remove</button>';
         tr.appendChild(td1); tr.appendChild(td2);
         tbody.appendChild(tr);
-        if (currentMode === 'schema') syncFieldExamples();
+        syncFieldExamples();
       }
 
       addFieldRow();
