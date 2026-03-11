@@ -70,7 +70,7 @@
     .card { background: #fff; border-radius: 12px; border: 1px solid #eaebee; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
     .table-scroll { overflow-x: auto; }
 
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 860px; }
 
     thead th { background: #fff; color: #999; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 14px 16px; text-align: left; border-bottom: 1px solid #eaeeea; white-space: nowrap; }
 
@@ -202,13 +202,12 @@
     <div class="table-scroll">
       <table id="catalogueTable">
         <colgroup>
-          <col style="width:11%;"/>
-          <col style="width:13%;"/>
-          <col style="width:22%;"/>
-          <col style="width:17%;"/>
+          <col style="width:12%;"/>
           <col style="width:14%;"/>
-          <col style="width:9%;"/>
-          <col style="width:7%;"/>
+          <col style="width:24%;"/>
+          <col style="width:18%;"/>
+          <col style="width:18%;"/>
+          <col style="width:14%;"/>
         </colgroup>
         <thead>
           <tr>
@@ -216,9 +215,8 @@
             <th>Datapoint</th>
             <th>Description</th>
             <th>Output Fields</th>
-            <th>Possible Values</th>
+            <th>Example / Possible Values</th>
             <th>Source</th>
-            <th>Updated</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -323,7 +321,7 @@ function renderTable() {
 
     var catRow = document.createElement('tr');
     catRow.className = 'cat-row';
-    catRow.innerHTML = '<td colspan="7"><div class="cat-row-inner"><span class="cat-label">' +
+    catRow.innerHTML = '<td colspan="6"><div class="cat-row-inner"><span class="cat-label">' +
       '<span class="cat-dot" style="background:' + colours.dot + ';"></span>' +
       escapeHtml(cat) +
       ' <span class="cat-count" style="background:' + colours.bg + ';color:' + colours.text + ';">' + dps.length + '</span>' +
@@ -348,7 +346,7 @@ function renderTable() {
           }).join('') + '</ul>'
         : '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
 
-      // Possible values: show classifier options if available, else data type label
+      // Possible values: classifier options > example value > data type label
       var possibleValuesHtml = (function() {
         var sample = dp.classifierOptionsSample;
         if (sample) {
@@ -369,7 +367,19 @@ function renderTable() {
             }
           } catch(e) {}
         }
-        // No options: show data type
+        // No schema options: show example value + evidence + url if available
+        if (dp.exampleValue) {
+          var parts = '<span style="font-size:12.5px;color:#343539;line-height:1.5;">' + escapeHtml(dp.exampleValue) + '</span>';
+          if (dp.exampleEvidence) {
+            parts += '<br><span style="font-size:11px;color:#999;font-style:italic;">' + escapeHtml(dp.exampleEvidence) + '</span>';
+          }
+          if (dp.exampleUrl) {
+            var safeUrl = String(dp.exampleUrl).replace(/"/g, '%22');
+            parts += '<br><a href="' + safeUrl + '" target="_blank" rel="noopener" style="font-size:11px;color:#5a8fd4;word-break:break-all;">' + escapeHtml(dp.exampleUrl) + '</a>';
+          }
+          return '<div>' + parts + '</div>';
+        }
+        // Fallback: data type label
         var dt = dp.dataType || 'text';
         var dtLabel = { 'string': 'Free text', 'number': 'Number', 'boolean': 'True / False', 'date': 'Date', 'string_array': 'List' }[dt.toLowerCase()] || 'Free text';
         return '<span class="data-type-label">' + escapeHtml(dtLabel) + '</span>';
@@ -389,8 +399,7 @@ function renderTable() {
         '<td><span class="dp-desc">' + escapeHtml(dp.description) + '</span></td>' +
         '<td>' + fieldsHtml + '</td>' +
         '<td>' + possibleValuesHtml + '</td>' +
-        '<td>' + sourceBadge + '</td>' +
-        '<td class="date-cell">' + escapeHtml(dp.updatedDate || '') + '</td>';
+        '<td>' + sourceBadge + '</td>';
 
       tbody.appendChild(tr);
     });

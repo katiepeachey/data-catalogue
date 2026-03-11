@@ -34,7 +34,8 @@ export function newDatapointView(): string {
     </label>`
   ).join('\n');
 
-  const sfTypeOptions = SF_FIELD_TYPES.map((t) => `<option value="${t}">${t}</option>`).join('');
+  // sfTypeOptions rendered server-side — avoids quote-nesting issues in JS
+  const sfTypeOptions = SF_FIELD_TYPES.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
 
   const body = `
     <div style="max-width:800px;">
@@ -70,9 +71,42 @@ export function newDatapointView(): string {
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="exampleValue">Example Value</label>
-            <input class="form-input" type="text" id="exampleValue" name="exampleValue"
-              placeholder="e.g. $10M - $50M ARR" />
+            <label class="form-label">Example / Possible Values</label>
+            <div class="value-mode-toggle">
+              <label class="mode-radio">
+                <input type="radio" name="valueMode" value="example" checked onchange="switchValueMode('example')" />
+                Free text example
+              </label>
+              <label class="mode-radio">
+                <input type="radio" name="valueMode" value="schema" onchange="switchValueMode('schema')" />
+                Set fixed options
+              </label>
+            </div>
+
+            <div id="exampleValueSection">
+              <input class="form-input" type="text" id="exampleValue" name="exampleValue"
+                placeholder="e.g. $10M - $50M ARR" style="margin-top:8px;" />
+            </div>
+
+            <div id="schemaSection" style="display:none;margin-top:8px;">
+              <div class="field-config-table-wrap">
+                <table class="field-config-table" style="width:100%;">
+                  <thead>
+                    <tr>
+                      <th>Option Name</th>
+                      <th style="width:60px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="optionTableBody"></tbody>
+                </table>
+                <button type="button" class="btn btn-outline btn-sm" style="margin:8px 10px;" onclick="addOptionRow()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Add Option
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
@@ -80,6 +114,7 @@ export function newDatapointView(): string {
             <select class="form-select" id="source" name="source">
               <option value="kernel">Kernel AI</option>
               <option value="linkedin">LinkedIn</option>
+              <option value="both">Kernel AI &amp; LinkedIn</option>
             </select>
           </div>
 
@@ -133,15 +168,16 @@ export function newDatapointView(): string {
     <style>
       .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
       .labels-grid {
-        display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        display: flex; flex-wrap: wrap;
         gap: 8px; padding: 12px; background: #fafcfa;
         border: 1px solid #e8ece8; border-radius: 8px;
       }
       .label-checkbox {
-        display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px; border-radius: 6px;
+        display: flex; align-items: center; gap: 6px; cursor: pointer;
+        padding: 4px 6px; border-radius: 6px; flex-shrink: 0;
       }
       .label-checkbox:hover { background: #f0f2f0; }
-      .label-checkbox input[type="checkbox"] { width: 14px; height: 14px; accent-color: #2d7a4f; cursor: pointer; }
+      .label-checkbox input[type="checkbox"] { width: 14px; height: 14px; accent-color: #8fb49a; cursor: pointer; flex-shrink: 0; }
       .label-hint {
         font-size: 11px; color: #aaa; font-weight: 400;
         text-transform: none; letter-spacing: 0; margin-left: 6px;
@@ -159,22 +195,60 @@ export function newDatapointView(): string {
       .field-config-table tbody td {
         padding: 6px 10px; border-bottom: 1px solid #f0f2f0; vertical-align: middle;
       }
+      .field-config-table tbody tr:last-child td { border-bottom: none; }
+      .value-mode-toggle { display: flex; gap: 20px; margin-bottom: 4px; }
+      .mode-radio { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #343539; cursor: pointer; }
+      .mode-radio input { accent-color: #8fb49a; cursor: pointer; }
       @media (max-width: 860px) { .form-grid { grid-template-columns: 1fr; } }
     </style>
 
     <script>
+      // Named remove functions — avoids quote-nesting issues in inline HTML
+      function removeFieldRow(btn) { btn.closest('tr').remove(); }
+      function removeOptionRow(btn) { btn.closest('tr').remove(); }
+
+      function switchValueMode(mode) {
+        document.getElementById('exampleValueSection').style.display = mode === 'example' ? '' : 'none';
+        document.getElementById('schemaSection').style.display = mode === 'schema' ? '' : 'none';
+      }
+
       var fieldCount = 0;
+      var sfOpts = '${sfTypeOptions}';
+
       function addFieldRow() {
         var tbody = document.getElementById('fieldTableBody');
-        var i = fieldCount++;
         var tr = document.createElement('tr');
-        tr.innerHTML =
-          '<td><input class="form-input" type="text" name="fieldName[]" placeholder="field_name" style="padding:6px 8px;font-size:12px;" /></td>' +
-          '<td><input class="form-input" type="text" name="fieldDisplayName[]" placeholder="Display Name" style="padding:6px 8px;font-size:12px;" /></td>' +
-          '<td><select class="form-select" name="fieldSfType[]" style="padding:6px 8px;font-size:12px;">${sfTypeOptions}</select></td>' +
-          '<td style="text-align:center;"><button type="button" class="btn btn-outline btn-sm" onclick="this.closest(\'tr\').remove()" style="padding:4px 8px;font-size:11px;color:#a03a3a;">Remove</button></td>';
+        var sel = document.createElement('select');
+        sel.className = 'form-select';
+        sel.name = 'fieldSfType[]';
+        sel.style.cssText = 'padding:6px 8px;font-size:12px;';
+        sel.innerHTML = sfOpts;
+        var td1 = document.createElement('td');
+        td1.innerHTML = '<input class="form-input" type="text" name="fieldName[]" placeholder="field_name" style="padding:6px 8px;font-size:12px;" />';
+        var td2 = document.createElement('td');
+        td2.innerHTML = '<input class="form-input" type="text" name="fieldDisplayName[]" placeholder="Display Name" style="padding:6px 8px;font-size:12px;" />';
+        var td3 = document.createElement('td');
+        td3.appendChild(sel);
+        var td4 = document.createElement('td');
+        td4.style.textAlign = 'center';
+        td4.innerHTML = '<button type="button" class="btn btn-outline btn-sm" onclick="removeFieldRow(this)" style="padding:4px 8px;font-size:11px;color:#a03a3a;">Remove</button>';
+        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+        tbody.appendChild(tr);
+        fieldCount++;
+      }
+
+      function addOptionRow() {
+        var tbody = document.getElementById('optionTableBody');
+        var tr = document.createElement('tr');
+        var td1 = document.createElement('td');
+        td1.innerHTML = '<input class="form-input" type="text" name="optionName[]" placeholder="e.g. B2B" style="padding:6px 8px;font-size:12px;" />';
+        var td2 = document.createElement('td');
+        td2.style.textAlign = 'center';
+        td2.innerHTML = '<button type="button" class="btn btn-outline btn-sm" onclick="removeOptionRow(this)" style="padding:4px 8px;font-size:11px;color:#a03a3a;">Remove</button>';
+        tr.appendChild(td1); tr.appendChild(td2);
         tbody.appendChild(tr);
       }
+
       addFieldRow();
     </script>
   `;

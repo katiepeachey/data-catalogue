@@ -207,23 +207,13 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
                 rows="3">${escapeHtml(submission.exampleEvidence)}</textarea>
             </div>
 
-            <div class="form-grid">
-
-              <div class="form-group">
-                <label class="form-label" for="source">Source</label>
-                <select class="form-select" id="source" name="source">
-                  ${sourceOption('kernel', submission.source)}
-                  ${sourceOption('linkedin', submission.source)}
-                  ${sourceOption('both', submission.source)}
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="updatedDate">Updated Date</label>
-                <input class="form-input" type="text" id="updatedDate" name="updatedDate"
-                  value="${escapeHtml(submission.updatedDate)}" placeholder="DD Mon YYYY" />
-              </div>
-
+            <div class="form-group">
+              <label class="form-label" for="source">Source</label>
+              <select class="form-select" id="source" name="source">
+                ${sourceOption('kernel', submission.source)}
+                ${sourceOption('linkedin', submission.source)}
+                ${sourceOption('both', submission.source)}
+              </select>
             </div>
 
             <div class="form-group">
@@ -267,7 +257,6 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
 
             <div class="preview-footer">
               ${previewSourceBadge(submission.source)}
-              <span class="preview-date">${escapeHtml(submission.updatedDate)}</span>
             </div>
 
           </div>

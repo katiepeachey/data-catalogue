@@ -51,31 +51,42 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       labels = [body.labels as Label];
     }
 
+    const autoDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
     updateSubmission(submission.id, {
       name: (body.name as string) || submission.name,
       category: (body.category as Category) || submission.category,
       description: (body.description as string) || submission.description,
-      exampleValue: (body.exampleValue as string) || submission.exampleValue,
-      exampleEvidence:
-        (body.exampleEvidence as string) || submission.exampleEvidence,
-      exampleUrl: (body.exampleUrl as string) || submission.exampleUrl,
+      exampleValue: (body.exampleValue as string) ?? submission.exampleValue,
+      exampleEvidence: (body.exampleEvidence as string) ?? submission.exampleEvidence,
+      exampleUrl: (body.exampleUrl as string) ?? submission.exampleUrl,
       source: (body.source as Source) || submission.source,
       labels,
-      updatedDate: (body.updatedDate as string) || submission.updatedDate,
+      updatedDate: autoDate,
       status: 'approved',
     });
 
-    // Save field configuration from the field config table
+    // Save field configuration — Express extended:true parses fields[i][key] as body.fields[i].key
+    const rawFields = ((req.body as any).fields as Array<{
+      fieldName?: string;
+      displayName?: string;
+      sfFieldType?: string;
+      visible?: string;
+      sortOrder?: string;
+    }>) || [];
+
     const existingFields = getFieldsForDatapoint(submission.id);
     const existingFieldNames = new Set(existingFields.map((f: DatapointField) => f.fieldName));
     const fieldUpdates: FieldConfigUpdate[] = [];
-    let fi = 0;
-    while (body[`fields[${fi}][fieldName]`]) {
-      const fieldName = body[`fields[${fi}][fieldName]`] as string;
-      const displayName = (body[`fields[${fi}][displayName]`] as string) || fieldName;
-      const sfFieldType = (body[`fields[${fi}][sfFieldType]`] as string as SfFieldType) || 'Text';
-      const visible = body[`fields[${fi}][visible]`] === '1';
-      const sortOrder = parseInt(body[`fields[${fi}][sortOrder]`] as string, 10) || fi;
+
+    for (let fi = 0; fi < rawFields.length; fi++) {
+      const rf = rawFields[fi];
+      if (!rf || !rf.fieldName) continue;
+      const fieldName = rf.fieldName;
+      const displayName = rf.displayName || fieldName;
+      const sfFieldType = (rf.sfFieldType as SfFieldType) || 'Text';
+      const visible = rf.visible === '1';
+      const sortOrder = parseInt(rf.sortOrder || String(fi), 10) || fi;
 
       if (existingFieldNames.has(fieldName)) {
         fieldUpdates.push({ fieldName, displayName, sfFieldType, visible, sortOrder });
@@ -84,7 +95,6 @@ router.post('/review/:id', async (req: Request, res: Response) => {
         addFieldToDatapoint(submission.id, fieldName, displayName, sfFieldType);
         updateFieldConfig(submission.id, [{ fieldName, displayName, sfFieldType, visible, sortOrder }]);
       }
-      fi++;
     }
 
     if (fieldUpdates.length > 0) {
@@ -164,8 +174,17 @@ router.post('/new', (req: Request, res: Response) => {
     labels = [body.labels];
   }
 
-  const now = new Date();
-  const updatedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const updatedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  // Possible values: free text example or rigid schema options
+  // Express extended:true parses name[] as body.name (array)
+  const ba = req.body as any;
+  let classifierOptionsSample: string | null = null;
+  if (body.valueMode === 'schema') {
+    const optNames: string[] = Array.isArray(ba.optionName) ? ba.optionName : (ba.optionName ? [ba.optionName] : []);
+    const opts = optNames.filter((n: string) => (n || '').trim()).map((n: string) => ({ name: n.trim() }));
+    if (opts.length > 0) classifierOptionsSample = JSON.stringify({ options: opts });
+  }
 
   db.prepare(`
     INSERT INTO datapoints (
@@ -174,14 +193,16 @@ router.post('/new', (req: Request, res: Response) => {
       source, labels, updated_date, status, submitted_at, visible,
       auto_name, auto_description, auto_category, auto_labels, auto_output_fields,
       admin_edited,
-      producing_agents, classifier_info, agent_types, agent_statuses
+      producing_agents, classifier_info, agent_types, agent_statuses,
+      classifier_options_sample
     ) VALUES (
       ?, ?, ?, ?,
       '[]', ?, '', '',
       ?, ?, ?, 'pending', datetime('now'), 0,
       ?, ?, ?, ?, '[]',
       1,
-      '[]', '[]', '[]', '[]'
+      '[]', '[]', '[]', '[]',
+      ?
     )
   `).run(
     id,
@@ -196,18 +217,19 @@ router.post('/new', (req: Request, res: Response) => {
     body.description || '',
     body.category || 'Custom Enrichment',
     JSON.stringify(labels),
+    classifierOptionsSample,
   );
 
-  // Parse and insert fields from the form
-  const fieldNames = Array.isArray(body['fieldName[]']) ? body['fieldName[]'] : (body['fieldName[]'] ? [body['fieldName[]']] : []);
-  const fieldDisplayNames = Array.isArray(body['fieldDisplayName[]']) ? body['fieldDisplayName[]'] : (body['fieldDisplayName[]'] ? [body['fieldDisplayName[]']] : []);
-  const fieldSfTypes = Array.isArray(body['fieldSfType[]']) ? body['fieldSfType[]'] : (body['fieldSfType[]'] ? [body['fieldSfType[]']] : []);
+  // Parse and insert fields — Express extended:true parses fieldName[] as body.fieldName
+  const fieldNames: string[] = Array.isArray(ba.fieldName) ? ba.fieldName : (ba.fieldName ? [ba.fieldName] : []);
+  const fieldDisplayNames: string[] = Array.isArray(ba.fieldDisplayName) ? ba.fieldDisplayName : (ba.fieldDisplayName ? [ba.fieldDisplayName] : []);
+  const fieldSfTypes: string[] = Array.isArray(ba.fieldSfType) ? ba.fieldSfType : (ba.fieldSfType ? [ba.fieldSfType] : []);
 
   for (let i = 0; i < fieldNames.length; i++) {
-    const fn = (fieldNames[i] as string || '').trim();
+    const fn = (fieldNames[i] || '').trim();
     if (!fn) continue;
-    const dn = (fieldDisplayNames[i] as string || fn).trim();
-    const st = (fieldSfTypes[i] as string || 'Text') as SfFieldType;
+    const dn = (fieldDisplayNames[i] || fn).trim();
+    const st = (fieldSfTypes[i] || 'Text') as SfFieldType;
     addFieldToDatapoint(id, fn, dn, st);
   }
 
