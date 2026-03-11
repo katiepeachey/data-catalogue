@@ -171,9 +171,8 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         </div>
         ${hasOptions ? `
         <button type="button" class="per-opt-toggle" id="togBtn_${i}"
-          onclick="togglePerOption(${i})"
-          style="margin-top:4px;">
-          ${isPerOption ? 'Single example' : 'Per option ↓'}
+          onclick="togglePerOption(${i})">
+          ${isPerOption ? '↑ Single example' : '↓ Set per option'}
         </button>` : ''}
       </td>
     </tr>`;
@@ -190,7 +189,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
             <span class="status-badge ${statusClass}">${statusLabel}</span>
           </div>
 
-          <form id="reviewForm" method="POST" action="/admin/review/${escapeHtml(submission.id)}">
+          <form id="reviewForm" method="POST" action="/admin/review/${escapeHtml(submission.id)}" onsubmit="flushAllExamples()">
             <input type="hidden" name="_action" id="_action" value="approve" />
             <input type="hidden" name="rejectionReason" id="rejectionReasonHidden" value="" />
 
@@ -531,11 +530,13 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         padding: 2px 8px; white-space: nowrap; min-width: 60px; text-align: center;
       }
       .per-opt-toggle {
-        font-size: 10px; color: #8fb49a; background: none; border: none;
-        cursor: pointer; padding: 0; text-decoration: underline;
-        font-family: inherit;
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 11px; font-weight: 600; color: #3a6b4a;
+        background: #eaf5ec; border: 1px solid #b8d8c0; border-radius: 6px;
+        cursor: pointer; padding: 3px 8px; margin-top: 5px;
+        font-family: inherit; transition: background 0.15s;
       }
-      .per-opt-toggle:hover { color: #343539; }
+      .per-opt-toggle:hover { background: #d4edda; }
 
       /* -- Field config table -- */
       .field-config-table-wrap {
@@ -732,6 +733,17 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         if (e.key === 'Escape' && overlay.style.display !== 'none') closeModal();
       });
 
+      // Flush all per-option example hidden inputs before form submit
+      function flushAllExamples() {
+        var totalFields = ${fields.length + 50}; // cover dynamically added rows
+        for (var fi = 0; fi < totalFields; fi++) {
+          var peroptEl = document.getElementById('peropt_' + fi);
+          if (peroptEl && peroptEl.style.display !== 'none') {
+            rebuildExampleJson(fi);
+          }
+        }
+      }
+
       // Per-option example toggle
       var classifierOpts = ${classifierOptionsJson};
 
@@ -756,7 +768,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
           // switching to single
           peropt.style.display = 'none';
           single.style.display = '';
-          btn.textContent = 'Per option ↓';
+          btn.textContent = '↓ Set per option';
           hidden.value = document.getElementById('singleInput_' + i).value;
         } else {
           // switching to per-option — ensure option rows exist
@@ -775,7 +787,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
           }
           single.style.display = 'none';
           peropt.style.display = '';
-          btn.textContent = 'Single example';
+          btn.textContent = '↑ Single example';
           rebuildExampleJson(i);
         }
       }
@@ -852,7 +864,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
           togBtn.className = 'per-opt-toggle';
           togBtn.id = 'togBtn_' + i;
           togBtn.style.marginTop = '4px';
-          togBtn.textContent = 'Per option ↓';
+          togBtn.textContent = '↓ Set per option';
           togBtn.addEventListener('click', function() { togglePerOption(i); });
           td6.appendChild(togBtn);
         }
