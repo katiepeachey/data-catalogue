@@ -134,10 +134,11 @@ export function newDatapointView(): string {
               <table class="field-config-table" id="fieldConfigTable">
                 <thead>
                   <tr>
-                    <th style="width:30%;">Field Name</th>
-                    <th style="width:30%;">Display Name</th>
-                    <th style="width:25%;">SF Field Type</th>
-                    <th style="width:15%;"></th>
+                    <th style="width:22%;">Field Name</th>
+                    <th style="width:22%;">Display Name</th>
+                    <th style="width:18%;">SF Field Type</th>
+                    <th style="width:28%;">Example</th>
+                    <th style="width:10%;"></th>
                   </tr>
                 </thead>
                 <tbody id="fieldTableBody"></tbody>
@@ -203,26 +204,118 @@ export function newDatapointView(): string {
     </style>
 
     <script>
-      // Named remove functions — avoids quote-nesting issues in inline HTML
-      function removeFieldRow(btn) { btn.closest('tr').remove(); }
-      function removeOptionRow(btn) { btn.closest('tr').remove(); }
-
-      function switchValueMode(mode) {
-        document.getElementById('exampleValueSection').style.display = mode === 'example' ? '' : 'none';
-        document.getElementById('schemaSection').style.display = mode === 'schema' ? '' : 'none';
-      }
-
+      var currentMode = 'example';
       var fieldCount = 0;
       var sfOpts = '${sfTypeOptions}';
+
+      function removeFieldRow(btn) { btn.closest('tr').remove(); }
+      function removeOptionRow(btn) {
+        btn.closest('tr').remove();
+        if (currentMode === 'schema') syncFieldExamples();
+      }
+
+      function switchValueMode(mode) {
+        currentMode = mode;
+        document.getElementById('exampleValueSection').style.display = mode === 'example' ? '' : 'none';
+        document.getElementById('schemaSection').style.display = mode === 'schema' ? '' : 'none';
+        // Rebuild example cells for all field rows
+        var rows = document.querySelectorAll('#fieldTableBody tr');
+        rows.forEach(function(tr) {
+          var cells = tr.querySelectorAll('td');
+          if (cells.length < 5) return;
+          var exCell = cells[3];
+          var hidden = exCell.querySelector('input[name="fieldExample[]"]');
+          var oldVal = hidden ? hidden.value : '';
+          while (exCell.firstChild) exCell.removeChild(exCell.firstChild);
+          buildExampleCellInto(exCell, oldVal);
+        });
+      }
+
+      function getOptionNames() {
+        return Array.prototype.slice.call(
+          document.querySelectorAll('#optionTableBody input[name="optionName[]"]')
+        ).map(function(el) { return el.value.trim(); }).filter(Boolean);
+      }
+
+      function rebuildFieldJson(exCell) {
+        var hidden = exCell.querySelector('input[name="fieldExample[]"]');
+        var inputs = exCell.querySelectorAll('input[data-opt]');
+        var map = {};
+        inputs.forEach(function(inp) {
+          if (inp.value.trim()) map[inp.getAttribute('data-opt')] = inp.value;
+        });
+        if (hidden) hidden.value = Object.keys(map).length > 0 ? JSON.stringify(map) : '';
+      }
+
+      function buildExampleCellInto(cell, existingVal) {
+        var hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'fieldExample[]';
+        cell.appendChild(hidden);
+
+        if (currentMode === 'example') {
+          var inp = document.createElement('input');
+          inp.className = 'form-input';
+          inp.type = 'text';
+          inp.placeholder = 'e.g. Acme Corp';
+          inp.style.cssText = 'padding:6px 8px;font-size:12px;';
+          inp.value = existingVal || '';
+          inp.oninput = function() { hidden.value = inp.value; };
+          hidden.value = existingVal || '';
+          cell.appendChild(inp);
+        } else {
+          // per-option mode
+          var existingMap = {};
+          try { if (existingVal) existingMap = JSON.parse(existingVal); } catch(e) {}
+          var wrap = document.createElement('div');
+          wrap.className = 'per-opt-examples';
+          var opts = getOptionNames();
+          opts.forEach(function(opt) {
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:4px;';
+            var lbl = document.createElement('span');
+            lbl.style.cssText = 'font-size:11px;font-weight:600;color:#555;min-width:56px;max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;';
+            lbl.title = opt;
+            lbl.textContent = opt;
+            var optInp = document.createElement('input');
+            optInp.className = 'form-input';
+            optInp.type = 'text';
+            optInp.placeholder = 'example...';
+            optInp.setAttribute('data-opt', opt);
+            optInp.value = existingMap[opt] || '';
+            optInp.style.cssText = 'padding:4px 6px;font-size:11px;flex:1;min-width:0;';
+            optInp.oninput = function() { rebuildFieldJson(cell); };
+            row.appendChild(lbl); row.appendChild(optInp);
+            wrap.appendChild(row);
+          });
+          cell.appendChild(wrap);
+          rebuildFieldJson(cell);
+        }
+      }
+
+      function syncFieldExamples() {
+        var rows = document.querySelectorAll('#fieldTableBody tr');
+        rows.forEach(function(tr) {
+          var cells = tr.querySelectorAll('td');
+          if (cells.length < 5) return;
+          var exCell = cells[3];
+          var hidden = exCell.querySelector('input[name="fieldExample[]"]');
+          var oldVal = hidden ? hidden.value : '';
+          while (exCell.firstChild) exCell.removeChild(exCell.firstChild);
+          buildExampleCellInto(exCell, oldVal);
+        });
+      }
 
       function addFieldRow() {
         var tbody = document.getElementById('fieldTableBody');
         var tr = document.createElement('tr');
+
         var sel = document.createElement('select');
         sel.className = 'form-select';
         sel.name = 'fieldSfType[]';
         sel.style.cssText = 'padding:6px 8px;font-size:12px;';
         sel.innerHTML = sfOpts;
+
         var td1 = document.createElement('td');
         td1.innerHTML = '<input class="form-input" type="text" name="fieldName[]" placeholder="field_name" style="padding:6px 8px;font-size:12px;" />';
         var td2 = document.createElement('td');
@@ -230,9 +323,11 @@ export function newDatapointView(): string {
         var td3 = document.createElement('td');
         td3.appendChild(sel);
         var td4 = document.createElement('td');
-        td4.style.textAlign = 'center';
-        td4.innerHTML = '<button type="button" class="btn btn-outline btn-sm" onclick="removeFieldRow(this)" style="padding:4px 8px;font-size:11px;color:#a03a3a;">Remove</button>';
-        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+        buildExampleCellInto(td4, '');
+        var td5 = document.createElement('td');
+        td5.style.textAlign = 'center';
+        td5.innerHTML = '<button type="button" class="btn btn-outline btn-sm" onclick="removeFieldRow(this)" style="padding:4px 8px;font-size:11px;color:#a03a3a;">Remove</button>';
+        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
         tbody.appendChild(tr);
         fieldCount++;
       }
@@ -241,12 +336,13 @@ export function newDatapointView(): string {
         var tbody = document.getElementById('optionTableBody');
         var tr = document.createElement('tr');
         var td1 = document.createElement('td');
-        td1.innerHTML = '<input class="form-input" type="text" name="optionName[]" placeholder="e.g. B2B" style="padding:6px 8px;font-size:12px;" />';
+        td1.innerHTML = '<input class="form-input" type="text" name="optionName[]" placeholder="e.g. B2B" style="padding:6px 8px;font-size:12px;" oninput="if(currentMode===\'schema\')syncFieldExamples()" />';
         var td2 = document.createElement('td');
         td2.style.textAlign = 'center';
         td2.innerHTML = '<button type="button" class="btn btn-outline btn-sm" onclick="removeOptionRow(this)" style="padding:4px 8px;font-size:11px;color:#a03a3a;">Remove</button>';
         tr.appendChild(td1); tr.appendChild(td2);
         tbody.appendChild(tr);
+        if (currentMode === 'schema') syncFieldExamples();
       }
 
       addFieldRow();

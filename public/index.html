@@ -144,47 +144,23 @@
     .date-cell { font-size: 12px; color: #aaa; white-space: nowrap; }
     .empty-state { text-align: center; padding: 60px 20px; color: #bbb; font-size: 14px; display: none; }
 
-    /* -- Expandable rows -- */
-    tr.data-row { cursor: pointer; }
-    tr.expand-row td { padding: 0; border-bottom: 1px solid #e8ece8; }
-    tr.expand-row.hidden { display: none; }
-    .expand-panel {
-      padding: 16px 20px 20px;
-      background: #fafcfa;
-      border-top: 1px solid #eaeeea;
-    }
-    .expand-chips {
-      display: flex; flex-wrap: wrap; gap: 6px;
-      margin-bottom: 14px;
-    }
+    /* -- Option chips (inline in table) -- */
     .option-chip {
       display: inline-flex; align-items: center;
       font-size: 11px; font-weight: 600;
       border-radius: 20px; padding: 4px 12px;
-      cursor: pointer; border: 1.5px solid transparent;
+      cursor: pointer; border: 1.5px solid #e0e4e0;
       transition: all 0.15s; white-space: nowrap;
-      background: #f0f2f0; color: #555; border-color: #e0e4e0;
+      background: #f0f2f0; color: #555;
     }
     .option-chip:hover { opacity: 0.8; }
-    .option-chip.active {
-      color: #fff;
+    .option-chip.active { color: #fff; }
+
+    /* -- Per-field inline examples -- */
+    .field-example {
+      display: inline; font-size: 11.5px; color: #888;
+      font-style: italic; margin-left: 4px;
     }
-    .expand-fields-table {
-      width: 100%; border-collapse: collapse;
-    }
-    .expand-fields-table td {
-      padding: 7px 12px; border-bottom: 1px solid #f0f2f0;
-      font-size: 12.5px; vertical-align: top;
-    }
-    .expand-fields-table tr:last-child td { border-bottom: none; }
-    .expand-field-name {
-      font-weight: 600; color: #343539; white-space: nowrap;
-      width: 30%; font-size: 12px;
-    }
-    .expand-example {
-      color: #555; line-height: 1.5;
-    }
-    .expand-example em { color: #999; font-style: italic; font-size: 11px; }
   </style>
 </head>
 <body>
@@ -373,8 +349,22 @@ function renderTable() {
 
     dps.forEach(function(dp) {
       totalVisible++;
+      var rowId = 'dprow_' + totalVisible;
       var tr = document.createElement('tr');
       tr.className = 'data-row';
+      tr.id = rowId;
+
+      var colours = CAT_COLOURS[dp.category] || CAT_COLOURS['Custom Enrichment'];
+
+      // Parse classifier options
+      var chipOpts = [];
+      if (dp.classifierOptionsSample) {
+        try {
+          var parsed = JSON.parse(dp.classifierOptionsSample);
+          chipOpts = (parsed.options || []).map(function(o) { return o.name || ''; }).filter(Boolean);
+        } catch(e) {}
+      }
+      var firstChip = chipOpts.length > 0 ? chipOpts[0] : null;
 
       var labelsHtml = (dp.labels || []).map(function(l) {
         return '<span class="sub-label lbl-' + l + (activeLabelFilter === l ? ' active-filter' : '') +
@@ -382,37 +372,49 @@ function renderTable() {
           (LABEL_DISPLAY[l] || l) + '</span>';
       }).join('');
 
-      var fields = dp.fields || [];
-      var fieldsHtml = fields.length > 0
-        ? '<ul class="fields-list">' + fields.map(function(f) {
-            return '<li><span class="field-tag">' + escapeHtml(f.displayName) + '</span></li>';
+      // Output Fields — each field with inline example (updates on chip click)
+      var dpFields = dp.fields || [];
+      var fieldsHtml = dpFields.length > 0
+        ? '<ul class="fields-list">' + dpFields.map(function(f) {
+            var exHtml = '';
+            if (f.exampleValue) {
+              try {
+                var exMap = JSON.parse(f.exampleValue);
+                if (exMap && typeof exMap === 'object' && !Array.isArray(exMap)) {
+                  var firstVal = firstChip ? (exMap[firstChip] || '') : (Object.values(exMap)[0] || '');
+                  exHtml = ' <span class="field-example per-opt-ex" data-exmap="' +
+                    escapeHtml(JSON.stringify(exMap)) + '">' + escapeHtml(firstVal) + '</span>';
+                } else {
+                  exHtml = ' <span class="field-example">' + escapeHtml(String(f.exampleValue)) + '</span>';
+                }
+              } catch(e) {
+                exHtml = ' <span class="field-example">' + escapeHtml(f.exampleValue) + '</span>';
+              }
+            }
+            return '<li><span class="field-tag">' + escapeHtml(f.displayName) + '</span>' + exHtml + '</li>';
           }).join('') + '</ul>'
         : '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
 
-      // Possible values: classifier options > example value > data type label
-      var possibleValuesHtml = (function() {
-        var sample = dp.classifierOptionsSample;
-        if (sample) {
-          try {
-            var parsed = JSON.parse(sample);
-            var opts = parsed.options || [];
-            if (opts.length > 0) {
-              var MAX_SHOW = 4;
-              var extra = opts.length - MAX_SHOW;
-              var html = '<div class="values-cell">' +
-                opts.map(function(o, idx) {
-                  var hidden = idx >= MAX_SHOW ? ' value-chip-hidden' : '';
-                  return '<span class="value-chip' + hidden + '">' + escapeHtml(o.name || '') + '</span>';
-                }).join('') +
-                (extra > 0 ? '<span class="value-chip overflow" onclick="expandValues(this)">+' + extra + ' more</span>' : '') +
-                '</div>';
-              return html;
-            }
-          } catch(e) {}
+      // Options column — all chips visible and clickable (no overflow), or datapoint-level example
+      var optionsHtml = (function() {
+        if (chipOpts.length > 0) {
+          return '<div class="values-cell" id="chips_' + rowId + '">' +
+            chipOpts.map(function(opt, idx) {
+              var activeStyle = idx === 0
+                ? 'background:' + colours.dot + ';border-color:' + colours.dot + ';color:#fff;'
+                : '';
+              return '<span class="option-chip' + (idx === 0 ? ' active' : '') + '"' +
+                ' style="' + activeStyle + '"' +
+                ' data-opt="' + escapeHtml(opt) + '"' +
+                ' data-colour="' + colours.dot + '"' +
+                ' onclick="selectChip(this, \'' + rowId + '\')">' +
+                escapeHtml(opt) + '</span>';
+            }).join('') +
+            '</div>';
         }
-        // No schema options: show example value + evidence + url if available
+        // No options: show datapoint-level example value
         if (dp.exampleValue) {
-          var parts = '<span style="font-size:12.5px;color:#343539;line-height:1.5;">' + escapeHtml(dp.exampleValue) + '</span>';
+          var parts = '<span style="font-size:12px;color:#343539;line-height:1.5;">' + escapeHtml(dp.exampleValue) + '</span>';
           if (dp.exampleEvidence) {
             parts += '<br><span style="font-size:11px;color:#999;font-style:italic;">' + escapeHtml(dp.exampleEvidence) + '</span>';
           }
@@ -422,7 +424,6 @@ function renderTable() {
           }
           return '<div>' + parts + '</div>';
         }
-        // Fallback: data type label
         var dt = dp.dataType || 'text';
         var dtLabel = { 'string': 'Free text', 'number': 'Number', 'boolean': 'True / False', 'date': 'Date', 'string_array': 'List' }[dt.toLowerCase()] || 'Free text';
         return '<span class="data-type-label">' + escapeHtml(dtLabel) + '</span>';
@@ -436,87 +437,15 @@ function renderTable() {
         ? '<div style="display:flex;gap:4px;flex-wrap:wrap;"><span class="source-badge source-kernel">' + kernelLogo + '</span><span class="source-badge source-linkedin">' + linkedinSvg + 'LinkedIn</span></div>'
         : '<span class="source-badge source-kernel">' + kernelLogo + '</span>';
 
-      var rowId = 'row_' + totalVisible;
-
-      tr.setAttribute('data-rowid', rowId);
-      tr.setAttribute('onclick', 'toggleRow("' + rowId + '")');
       tr.innerHTML =
         '<td><div class="sub-labels">' + labelsHtml + '</div></td>' +
         '<td><div class="dp-name">' + escapeHtml(dp.name) + '</div></td>' +
         '<td><span class="dp-desc">' + escapeHtml(dp.description) + '</span></td>' +
         '<td>' + fieldsHtml + '</td>' +
-        '<td>' + possibleValuesHtml + '</td>' +
+        '<td>' + optionsHtml + '</td>' +
         '<td>' + sourceBadge + '</td>';
 
       tbody.appendChild(tr);
-
-      // Build expand row
-      var expandTr = document.createElement('tr');
-      expandTr.className = 'expand-row hidden';
-      expandTr.id = rowId;
-
-      var expandTd = document.createElement('td');
-      expandTd.colSpan = 6;
-
-      // Get classifier options for chip interaction
-      var chipOpts = [];
-      if (dp.classifierOptionsSample) {
-        try {
-          var parsed = JSON.parse(dp.classifierOptionsSample);
-          chipOpts = (parsed.options || []).map(function(o) { return o.name || ''; }).filter(Boolean);
-        } catch(e) {}
-      }
-
-      var colours = CAT_COLOURS[dp.category] || CAT_COLOURS['Custom Enrichment'];
-
-      // Build chips HTML
-      var chipsHtml = '';
-      if (chipOpts.length > 0) {
-        chipsHtml = '<div class="expand-chips" id="chips_' + rowId + '">' +
-          chipOpts.map(function(opt, idx) {
-            var activeStyle = idx === 0 ? 'background:' + colours.dot + ';border-color:' + colours.dot + ';color:#fff;' : '';
-            return '<span class="option-chip' + (idx === 0 ? ' active' : '') + '"' +
-              ' style="' + activeStyle + '"' +
-              ' data-opt="' + escapeHtml(opt) + '"' +
-              ' data-colour="' + colours.dot + '"' +
-              ' onclick="selectChip(event, \'' + rowId + '\', \'' + escapeHtml(opt) + '\')">' +
-              escapeHtml(opt) + '</span>';
-          }).join('') +
-          '</div>';
-      }
-
-      // Build fields table — each field with its example
-      var firstChip = chipOpts[0] || null;
-      var fieldsTableHtml = '<table class="expand-fields-table">';
-      var dpFields = dp.fields || [];
-      dpFields.forEach(function(f) {
-        var exampleHtml = '';
-        if (f.exampleValue) {
-          try {
-            var exMap = JSON.parse(f.exampleValue);
-            if (exMap && typeof exMap === 'object') {
-              // Per-option: show for first chip by default, wrap in data attrs
-              var firstVal = firstChip ? (exMap[firstChip] || '') : Object.values(exMap)[0] || '';
-              exampleHtml = '<span class="expand-example per-opt-example" data-exmap="' +
-                escapeHtml(JSON.stringify(exMap)) + '">' + escapeHtml(firstVal) + '</span>';
-            } else {
-              exampleHtml = '<span class="expand-example">' + escapeHtml(f.exampleValue) + '</span>';
-            }
-          } catch(e) {
-            exampleHtml = '<span class="expand-example">' + escapeHtml(f.exampleValue) + '</span>';
-          }
-        }
-        fieldsTableHtml +=
-          '<tr>' +
-          '<td class="expand-field-name"><span class="field-tag">' + escapeHtml(f.displayName) + '</span></td>' +
-          '<td>' + exampleHtml + '</td>' +
-          '</tr>';
-      });
-      fieldsTableHtml += '</table>';
-
-      expandTd.innerHTML = '<div class="expand-panel">' + chipsHtml + fieldsTableHtml + '</div>';
-      expandTr.appendChild(expandTd);
-      tbody.appendChild(expandTr);
     });
   });
 
@@ -524,13 +453,8 @@ function renderTable() {
   document.getElementById('emptyState').style.display = totalVisible === 0 ? 'block' : 'none';
 }
 
-function toggleRow(rowId) {
-  var el = document.getElementById(rowId);
-  if (el) el.classList.toggle('hidden');
-}
-
-function selectChip(e, rowId, opt) {
-  e.stopPropagation();
+function selectChip(chipEl, rowId) {
+  var opt = chipEl.getAttribute('data-opt');
   var chipsEl = document.getElementById('chips_' + rowId);
   if (!chipsEl) return;
 
@@ -551,25 +475,16 @@ function selectChip(e, rowId, opt) {
     }
   });
 
-  // Update per-option examples in the panel
-  var panel = chipsEl.closest('.expand-panel');
-  if (!panel) return;
-  var perOptEls = panel.querySelectorAll('.per-opt-example');
+  // Update per-option inline examples in the same row
+  var row = document.getElementById(rowId);
+  if (!row) return;
+  var perOptEls = row.querySelectorAll('.per-opt-ex');
   perOptEls.forEach(function(el) {
     try {
       var map = JSON.parse(el.getAttribute('data-exmap') || '{}');
       el.textContent = map[opt] || '';
     } catch(e) {}
   });
-}
-
-function expandValues(btn) {
-  var cell = btn.parentNode;
-  var hidden = cell.querySelectorAll('.value-chip-hidden');
-  for (var i = 0; i < hidden.length; i++) {
-    hidden[i].classList.remove('value-chip-hidden');
-  }
-  btn.style.display = 'none';
 }
 
 loadDatapoints();

@@ -225,13 +225,15 @@ router.post('/new', (req: Request, res: Response) => {
   const fieldNames: string[] = Array.isArray(ba.fieldName) ? ba.fieldName : (ba.fieldName ? [ba.fieldName] : []);
   const fieldDisplayNames: string[] = Array.isArray(ba.fieldDisplayName) ? ba.fieldDisplayName : (ba.fieldDisplayName ? [ba.fieldDisplayName] : []);
   const fieldSfTypes: string[] = Array.isArray(ba.fieldSfType) ? ba.fieldSfType : (ba.fieldSfType ? [ba.fieldSfType] : []);
+  const fieldExamples: string[] = Array.isArray(ba.fieldExample) ? ba.fieldExample : (ba.fieldExample ? [ba.fieldExample] : []);
 
   for (let i = 0; i < fieldNames.length; i++) {
     const fn = (fieldNames[i] || '').trim();
     if (!fn) continue;
     const dn = (fieldDisplayNames[i] || fn).trim();
     const st = (fieldSfTypes[i] || 'Text') as SfFieldType;
-    addFieldToDatapoint(id, fn, dn, st);
+    const exampleValue = (fieldExamples[i] || '').trim() || null;
+    addFieldToDatapoint(id, fn, dn, st, exampleValue);
   }
 
   res.redirect('/admin/queue?msg=Datapoint+created+successfully');
