@@ -4,7 +4,7 @@
   "description": "Kernel AI Data Catalogue Admin System",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc && cp src/db/migrations/*.sql dist/db/migrations/",
+    "build": "tsc && mkdir -p dist/db/migrations && cp src/db/migrations/*.sql dist/db/migrations/",
     "start": "node dist/server.js",
     "dev": "ts-node src/server.ts",
     "sync": "ts-node src/sync/run.ts"
