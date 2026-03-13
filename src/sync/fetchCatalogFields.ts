@@ -1,5 +1,5 @@
 import { query } from '../db/motherduck';
-import { DATA_CATALOGUE_TYPE_ID, DATA_CATALOGUE_FLOW_IDS, TOOLS_CLIENT_ID } from './dataCatalogueConfig';
+import { DATA_CATALOGUE_TYPE_ID } from './dataCatalogueConfig';
 
 /**
  * One row per top-level Data Catalogue agent.
@@ -27,31 +27,20 @@ export interface RawCatalogField {
 /**
  * Fetch Data Catalogue agents from MotherDuck, grouped by top-level agent.
  *
- * Each returned row represents ONE agent (e.g. "Magic Funding V2").
- * catalog_field_names contains all catalog fields produced by that agent
- * (e.g. ["krnl_funding", "krnl_total_funding", ...]).
+ * Uses agent_type_id = 135 directly from the snapshot, which carries type info
+ * for both control agents and flows. No separate config table queries needed.
  */
 export async function fetchCatalogFields(): Promise<RawCatalogField[]> {
-  const flowIdsList = DATA_CATALOGUE_FLOW_IDS.length > 0
-    ? DATA_CATALOGUE_FLOW_IDS.join(', ')
-    : '-1';
-
   const sql = `
     WITH data_catalogue_agents AS (
-      -- Active control agents tagged as Data Catalogue (type_id = ${DATA_CATALOGUE_TYPE_ID})
-      SELECT id AS agent_id, name AS agent_name
-      FROM "kernel-prod-db".public.control_agent_config
+      -- All agents/flows tagged as Data Catalogue, sourced directly from the snapshot.
+      -- The snapshot carries agent_type_id for both control agents and flows.
+      SELECT DISTINCT agent_id, agent_name
+      FROM core.agent_classifier_field_snapshot
       WHERE agent_type_id = ${DATA_CATALOGUE_TYPE_ID}
-        AND status = 'active'
-        AND client_id = ${TOOLS_CLIENT_ID}
-
-      UNION
-
-      -- Whitelisted Data Catalogue flows
-      SELECT id AS agent_id, name AS agent_name
-      FROM "kernel-prod-db".public.q_flow_configs
-      WHERE id IN (${flowIdsList})
-        AND status = 'active'
+        AND agent_status = 'active'
+        AND has_catalog_field_match = true
+        AND catalog_field_archived = false
     ),
     snapshot_with_top_level AS (
       SELECT

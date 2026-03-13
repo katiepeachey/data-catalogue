@@ -117,8 +117,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
 
     // Chips for fields in datapoints with classifier options
     const chipsHtml = hasOptions ? classifierOptions.map((opt, oi) =>
-      `<span class="admin-chip${oi === 0 ? ' active' : ''}" data-opt="${escapeHtml(opt)}"
-        onclick="adminSelectChip(this,${i})">${escapeHtml(opt)}</span>`
+      `<span class="admin-chip${oi === 0 ? ' active' : ''}" data-opt="${escapeHtml(opt)}" data-fi="${i}">${escapeHtml(opt)}</span>`
     ).join('') : '';
 
     // Initial text for the shared input = first option's example (or empty)
@@ -736,21 +735,11 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
       var adminChipMaps = {};
       var adminActiveChip = {};
 
-      // Initialise from server-rendered data-map attributes
-      document.querySelectorAll('.admin-chips').forEach(function(chipsEl) {
-        var fi = parseInt(chipsEl.id.replace('adminChips_', ''), 10);
-        try { adminChipMaps[fi] = JSON.parse(chipsEl.getAttribute('data-map') || '{}'); }
-        catch(e) { adminChipMaps[fi] = {}; }
-        // First chip is active by default (already marked active in HTML)
-        var firstChip = chipsEl.querySelector('.admin-chip');
-        adminActiveChip[fi] = firstChip ? firstChip.getAttribute('data-opt') : null;
-      });
-
       function adminSelectChip(chipEl, fi) {
         // Save current text input value into the map for the previously active chip
         var input = document.getElementById('optInput_' + fi);
         var prev = adminActiveChip[fi];
-        if (prev !== null && input) {
+        if (prev !== null && prev !== undefined && input) {
           if (!adminChipMaps[fi]) adminChipMaps[fi] = {};
           adminChipMaps[fi][prev] = input.value;
           flushChipMap(fi);
@@ -769,6 +758,19 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         }
       }
 
+      // Initialise from server-rendered data-map attributes and attach click listeners
+      document.querySelectorAll('.admin-chips').forEach(function(chipsEl) {
+        var fi = parseInt(chipsEl.id.replace('adminChips_', ''), 10);
+        try { adminChipMaps[fi] = JSON.parse(chipsEl.getAttribute('data-map') || '{}'); }
+        catch(e) { adminChipMaps[fi] = {}; }
+        var firstChip = chipsEl.querySelector('.admin-chip');
+        adminActiveChip[fi] = firstChip ? firstChip.getAttribute('data-opt') : null;
+        // Attach click listeners to each chip
+        chipsEl.querySelectorAll('.admin-chip').forEach(function(chip) {
+          chip.addEventListener('click', function() { adminSelectChip(chip, fi); });
+        });
+      });
+
       function updateChipExample(fi) {
         var input = document.getElementById('optInput_' + fi);
         var opt = adminActiveChip[fi];
@@ -786,6 +788,13 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         var hidden = document.getElementById('exVal_' + fi);
         if (hidden) hidden.value = Object.keys(clean).length ? JSON.stringify(clean) : '';
       }
+
+      // On submit: flush the currently active chip's input for every field before sending
+      form.addEventListener('submit', function() {
+        Object.keys(adminActiveChip).forEach(function(fi) {
+          updateChipExample(parseInt(fi, 10));
+        });
+      });
 
       // Field config: add new row
       var fieldRowCount = ${fields.length};

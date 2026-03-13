@@ -154,6 +154,16 @@
     }
     .option-chip:hover { opacity: 0.8; }
     .option-chip.active { color: #fff; }
+    /* -- Options/Values column per-field list -- */
+    .fex-list { display: flex; flex-direction: column; gap: 3px; }
+    .fex-item { min-height: 22px; display: flex; align-items: flex-start; }
+    .fex-empty { min-height: 22px; }
+    .fex-val { font-size: 12px; color: #555; font-style: italic; line-height: 1.4; }
+    .fex-reasoning .per-opt-ex {
+      font-size: 12px; color: #555; font-style: italic;
+      line-height: 1.4; white-space: normal; word-break: break-word;
+    }
+    .values-cell { display: flex; flex-wrap: wrap; gap: 4px; }
 
     /* -- Per-field inline examples -- */
     .field-example {
@@ -371,51 +381,83 @@ function renderTable() {
           (LABEL_DISPLAY[l] || l) + '</span>';
       }).join('');
 
-      // Output Fields — each field with inline example (updates on chip click)
+      // Output Fields — field name tags only (examples go in Options column)
       var dpFields = dp.fields || [];
       var fieldsHtml = dpFields.length > 0
         ? '<ul class="fields-list">' + dpFields.map(function(f) {
-            var exHtml = '';
+            return '<li><span class="field-tag">' + escapeHtml(f.displayName) + '</span></li>';
+          }).join('') + '</ul>'
+        : '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
+
+      // Options / Example column
+      var CHIP_ACTIVE_COLOR = '#343539';
+      var optionsHtml = (function() {
+        if (chipOpts.length > 0) {
+          // Build chip HTML (shared, placed once next to the first non-reasoning field)
+          var chipsHtml = chipOpts.map(function(opt, idx) {
+            var activeStyle = idx === 0
+              ? 'background:' + CHIP_ACTIVE_COLOR + ';border-color:' + CHIP_ACTIVE_COLOR + ';color:#fff;'
+              : '';
+            return '<span class="option-chip' + (idx === 0 ? ' active' : '') + '"' +
+              ' style="' + activeStyle + '"' +
+              ' data-opt="' + escapeHtml(opt) + '"' +
+              ' data-colour="' + CHIP_ACTIVE_COLOR + '"' +
+              ' onclick="selectChip(this, \'' + rowId + '\')">' +
+              escapeHtml(opt) + '</span>';
+          }).join('');
+
+          // Per-field rows: reasoning fields show text; classifier fields show chips
+          var chipsPlaced = false;
+          var rows = dpFields.map(function(f) {
             if (f.exampleValue) {
               try {
                 var exMap = JSON.parse(f.exampleValue);
                 if (exMap && typeof exMap === 'object' && !Array.isArray(exMap)) {
-                  var firstVal = firstChip ? (exMap[firstChip] || '') : (Object.values(exMap)[0] || '');
-                  exHtml = ' <span class="field-example per-opt-ex" data-exmap="' +
-                    escapeHtml(JSON.stringify(exMap)) + '">' + escapeHtml(firstVal) + '</span>';
-                } else {
-                  // Don't show plain text if it's just one of the chip options (redundant)
-                  var plainText = String(f.exampleValue);
-                  if (chipOpts.indexOf(plainText) === -1) {
-                    exHtml = ' <span class="field-example">' + escapeHtml(plainText) + '</span>';
-                  }
+                  // Reasoning field — show dynamic text
+                  var firstVal = firstChip ? (exMap[firstChip] || '') : '';
+                  if (!firstVal) { var vals = Object.values(exMap); firstVal = vals.length ? String(vals[0]) : ''; }
+                  return '<div class="fex-item fex-reasoning">' +
+                    '<span class="per-opt-ex" data-exmap="' + JSON.stringify(exMap).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">' +
+                    escapeHtml(String(firstVal)) + '</span></div>';
                 }
-              } catch(e) {
-                exHtml = ' <span class="field-example">' + escapeHtml(f.exampleValue) + '</span>';
-              }
+              } catch(e) {}
             }
-            return '<li><span class="field-tag">' + escapeHtml(f.displayName) + '</span>' + exHtml + '</li>';
-          }).join('') + '</ul>'
-        : '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
+            // Classifier field — place chips here (once only)
+            if (!chipsPlaced) {
+              chipsPlaced = true;
+              return '<div class="fex-item"><div class="values-cell" id="chips_' + rowId + '">' + chipsHtml + '</div></div>';
+            }
+            return '<div class="fex-item fex-empty"></div>';
+          }).join('');
 
-      // Options column — all chips visible and clickable (no overflow), or datapoint-level example
-      var optionsHtml = (function() {
-        if (chipOpts.length > 0) {
-          return '<div class="values-cell" id="chips_' + rowId + '">' +
-            chipOpts.map(function(opt, idx) {
-              var activeStyle = idx === 0
-                ? 'background:' + colours.dot + ';border-color:' + colours.dot + ';color:#fff;'
-                : '';
-              return '<span class="option-chip' + (idx === 0 ? ' active' : '') + '"' +
-                ' style="' + activeStyle + '"' +
-                ' data-opt="' + escapeHtml(opt) + '"' +
-                ' data-colour="' + colours.dot + '"' +
-                ' onclick="selectChip(this, \'' + rowId + '\')">' +
-                escapeHtml(opt) + '</span>';
-            }).join('') +
-            '</div>';
+          // If chips weren't placed (all fields are reasoning), put chips at top
+          if (!chipsPlaced) {
+            return '<div class="fex-list"><div class="fex-item"><div class="values-cell" id="chips_' + rowId + '">' + chipsHtml + '</div></div>' + rows + '</div>';
+          }
+          return '<div class="fex-list">' + rows + '</div>';
         }
-        // No options: show datapoint-level example value
+
+        // No chips: show per-field example values as a list aligned with fields
+        var fieldExRows = dpFields.map(function(f) {
+          if (!f.exampleValue) return '<div class="fex-item fex-empty"></div>';
+          var ex = '';
+          try {
+            var exMap = JSON.parse(f.exampleValue);
+            if (exMap && typeof exMap === 'object' && !Array.isArray(exMap)) {
+              var vals = Object.values(exMap);
+              ex = vals.length ? String(vals[0]) : '';
+            } else {
+              ex = String(f.exampleValue);
+            }
+          } catch(e) { ex = String(f.exampleValue); }
+          return ex
+            ? '<div class="fex-item"><span class="fex-val">' + escapeHtml(ex) + '</span></div>'
+            : '<div class="fex-item fex-empty"></div>';
+        }).join('');
+
+        if (fieldExRows) return '<div class="fex-list">' + fieldExRows + '</div>';
+
+        // Fallback: datapoint-level example
         if (dp.exampleValue) {
           var parts = '<span style="font-size:12px;color:#343539;line-height:1.5;">' + escapeHtml(dp.exampleValue) + '</span>';
           if (dp.exampleEvidence) {
@@ -433,7 +475,7 @@ function renderTable() {
       })();
 
       var linkedinSvg = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px;flex-shrink:0;"><path d="M20.447 20.452H16.89v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a1.98 1.98 0 0 1-1.983-1.98 1.98 1.98 0 0 1 3.962 0 1.98 1.98 0 0 1-1.979 1.98zm1.961 13.019H3.374V9h3.924v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>';
-      var kernelBadge = '<span class="source-badge source-kernel"><em>Kernel</em></span>';
+      var kernelBadge = '<span class="source-badge source-kernel">Kernel</span>';
       var sourceBadge = dp.source === 'linkedin'
         ? '<span class="source-badge source-linkedin">' + linkedinSvg + 'LinkedIn</span>'
         : dp.source === 'both'

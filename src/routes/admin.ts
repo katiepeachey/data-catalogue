@@ -86,7 +86,8 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       const displayName = rf.displayName || fieldName;
       const sfFieldType = (rf.sfFieldType as SfFieldType) || 'Text';
       const visible = rf.visible === '1';
-      const sortOrder = parseInt(rf.sortOrder || String(fi), 10) || fi;
+      const sortOrderParsed = parseInt(rf.sortOrder ?? '', 10);
+      const sortOrder = isNaN(sortOrderParsed) ? fi : sortOrderParsed;
       const exampleValue = (rf as any).exampleValue || null;
 
       if (existingFieldNames.has(fieldName)) {
