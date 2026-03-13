@@ -119,7 +119,7 @@
     .sub-label.active-filter { outline: 2px solid currentColor; outline-offset: 1px; }
 
     /* -- Output fields -- */
-    .fields-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 3px; }
+    .fields-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
     .field-tag { display: inline-block; font-size: 12px; color: #343539; background: #f0f6f1; border: 1px solid #c8d5c9; border-radius: 4px; padding: 2px 7px; width: fit-content; }
 
     /* -- Possible values chips -- */
@@ -155,7 +155,7 @@
     .option-chip:hover { opacity: 0.8; }
     .option-chip.active { color: #fff; }
     /* -- Options/Values column per-field list -- */
-    .fex-list { display: flex; flex-direction: column; gap: 3px; }
+    .fex-list { display: flex; flex-direction: column; gap: 10px; }
     .fex-item { min-height: 22px; display: flex; align-items: flex-start; }
     .fex-empty { min-height: 22px; }
     .fex-val { font-size: 12px; color: #555; font-style: italic; line-height: 1.4; }
@@ -390,10 +390,9 @@ function renderTable() {
         : '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
 
       // Options / Example column
-      var CHIP_ACTIVE_COLOR = '#343539';
+      var CHIP_ACTIVE_COLOR = '#8fb49a';
       var optionsHtml = (function() {
         if (chipOpts.length > 0) {
-          // Build chip HTML (shared, placed once next to the first non-reasoning field)
           var chipsHtml = chipOpts.map(function(opt, idx) {
             var activeStyle = idx === 0
               ? 'background:' + CHIP_ACTIVE_COLOR + ';border-color:' + CHIP_ACTIVE_COLOR + ';color:#fff;'
@@ -406,14 +405,12 @@ function renderTable() {
               escapeHtml(opt) + '</span>';
           }).join('');
 
-          // Per-field rows: reasoning fields show text; classifier fields show chips
           var chipsPlaced = false;
           var rows = dpFields.map(function(f) {
             if (f.exampleValue) {
               try {
                 var exMap = JSON.parse(f.exampleValue);
                 if (exMap && typeof exMap === 'object' && !Array.isArray(exMap)) {
-                  // Reasoning field — show dynamic text
                   var firstVal = firstChip ? (exMap[firstChip] || '') : '';
                   if (!firstVal) { var vals = Object.values(exMap); firstVal = vals.length ? String(vals[0]) : ''; }
                   return '<div class="fex-item fex-reasoning">' +
@@ -422,7 +419,6 @@ function renderTable() {
                 }
               } catch(e) {}
             }
-            // Classifier field — place chips here (once only)
             if (!chipsPlaced) {
               chipsPlaced = true;
               return '<div class="fex-item"><div class="values-cell" id="chips_' + rowId + '">' + chipsHtml + '</div></div>';
@@ -430,14 +426,12 @@ function renderTable() {
             return '<div class="fex-item fex-empty"></div>';
           }).join('');
 
-          // If chips weren't placed (all fields are reasoning), put chips at top
           if (!chipsPlaced) {
             return '<div class="fex-list"><div class="fex-item"><div class="values-cell" id="chips_' + rowId + '">' + chipsHtml + '</div></div>' + rows + '</div>';
           }
           return '<div class="fex-list">' + rows + '</div>';
         }
 
-        // No chips: show per-field example values as a list aligned with fields
         var fieldExRows = dpFields.map(function(f) {
           if (!f.exampleValue) return '<div class="fex-item fex-empty"></div>';
           var ex = '';
@@ -457,7 +451,6 @@ function renderTable() {
 
         if (fieldExRows) return '<div class="fex-list">' + fieldExRows + '</div>';
 
-        // Fallback: datapoint-level example
         if (dp.exampleValue) {
           var parts = '<span style="font-size:12px;color:#343539;line-height:1.5;">' + escapeHtml(dp.exampleValue) + '</span>';
           if (dp.exampleEvidence) {
