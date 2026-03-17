@@ -3,7 +3,7 @@ import { SubmissionWithMeta } from '../db/datapoints';
 import { layout, escapeHtml } from './layout';
 
 const ALL_LABELS: { value: Label; display: string }[] = [
-  { value: 'company-identity',          display: 'Company Identity' },
+  { value: 'company-identity',          display: 'Entity Identity' },
   { value: 'location-geography',        display: 'Location & Geography' },
   { value: 'corporate-structure',       display: 'Corporate Structure' },
   { value: 'financial-profile',         display: 'Financial Profile' },
@@ -244,28 +244,6 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
                   Add Field
                 </button>
               </div>
-            </div>
-
-            <div class="form-grid">
-
-              <div class="form-group">
-                <label class="form-label" for="exampleValue">Example Value</label>
-                <input class="form-input" type="text" id="exampleValue" name="exampleValue"
-                  value="${escapeHtml(submission.exampleValue)}" />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label" for="exampleUrl">Example URL</label>
-                <input class="form-input" type="text" id="exampleUrl" name="exampleUrl"
-                  value="${escapeHtml(submission.exampleUrl)}" placeholder="https://..." />
-              </div>
-
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="exampleEvidence">Example Evidence</label>
-              <textarea class="form-textarea" id="exampleEvidence" name="exampleEvidence"
-                rows="3">${escapeHtml(submission.exampleEvidence)}</textarea>
             </div>
 
             <div class="form-group">

@@ -7,6 +7,8 @@ import { getLocalDb } from '../db/local';
 import { queueView } from '../views/queueView';
 import { reviewView } from '../views/reviewView';
 import { newDatapointView } from '../views/newDatapointView';
+import { helptextView } from '../views/helptextView';
+import { getColumnHelptext, setColumnHelptext } from '../db/columnHelptext';
 import { sendRejectionNotification } from '../slack';
 import { Category, Label, Source, SfFieldType, DatapointField } from '../types';
 
@@ -155,6 +157,22 @@ router.post('/datapoints/:id/fields/add', (req: Request, res: Response) => {
   }
   addFieldToDatapoint(req.params.id, fieldName, displayName, sfFieldType || 'Text');
   res.json({ ok: true });
+});
+
+// GET /admin/helptext — render helptext edit page
+router.get('/helptext', (_req: Request, res: Response) => {
+  const msg = _req.query.msg as string | undefined;
+  res.send(helptextView(getColumnHelptext(), msg));
+});
+
+// POST /admin/helptext — save helptext values
+router.post('/helptext', (req: Request, res: Response) => {
+  const body = req.body as Record<string, string | string[]>;
+  const keys = Array.isArray(body._keys) ? body._keys : (body._keys ? [body._keys] : []);
+  for (const key of keys) {
+    setColumnHelptext(key as string, (body[key as string] as string) || '');
+  }
+  res.redirect('/admin/helptext?msg=Helptext+saved+successfully');
 });
 
 // GET /admin/new — render manual add form

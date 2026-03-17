@@ -3,7 +3,7 @@ import { SubmissionWithMeta } from '../db/datapoints';
 import { layout, escapeHtml } from './layout';
 
 const LABEL_DISPLAY: Record<string, string> = {
-  'company-identity': 'Company Identity',
+  'company-identity': 'Entity Identity',
   'location-geography': 'Location &amp; Geography',
   'corporate-structure': 'Corporate Structure',
   'financial-profile': 'Financial Profile',
@@ -114,6 +114,12 @@ export function queueView(submissions: SubmissionWithMeta[], flashMsg?: string):
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
           Add Datapoint
+        </a>
+        <a href="/admin/helptext" class="btn btn-outline btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          Set Helptext
         </a>
         <a href="/admin/sync-config" class="btn btn-outline btn-sm">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;">

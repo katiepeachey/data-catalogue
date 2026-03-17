@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { listDatapoints, getDatapoint, getStats } from '../db/datapoints';
 import { getVisibleFields, getFieldsForDatapoint } from '../db/datapointFields';
+import { getColumnHelptext } from '../db/columnHelptext';
 import { SubmissionStatus } from '../types';
 
 const router = Router();
@@ -67,6 +68,11 @@ router.get('/datapoints/:id', (req: Request, res: Response) => {
 // GET /api/stats — counts
 router.get('/stats', (_req: Request, res: Response) => {
   res.json(getStats());
+});
+
+// GET /api/helptext — column helptext for catalogue
+router.get('/helptext', (_req: Request, res: Response) => {
+  res.json(getColumnHelptext());
 });
 
 export default router;

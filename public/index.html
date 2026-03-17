@@ -68,14 +68,15 @@
 
     /* -- Card / Table -- */
     .card { background: #fff; border-radius: 12px; border: 1px solid #eaebee; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
-    .table-scroll { overflow-x: auto; }
+    .table-scroll { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 220px); }
 
     table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 860px; }
 
-    thead th { background: #fff; color: #999; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 14px 16px; text-align: left; border-bottom: 1px solid #eaeeea; white-space: nowrap; }
+    thead th { background: #fff; color: #999; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 14px 16px; text-align: left; border-bottom: 1px solid #eaeeea; white-space: nowrap; position: sticky; top: 0; z-index: 10; }
 
     /* -- Category header rows -- */
-    tr.cat-row td { padding: 0; border-top: 1px solid #e8ece8; border-bottom: 1px solid #e8ece8; }
+    tr.cat-row td { padding: 0; border-top: 1px solid #e8ece8; border-bottom: 1px solid #e8ece8; position: relative; }
+    tr.cat-row td:has(.cat-tip:hover) { z-index: 9999; }
     .cat-row-inner { padding: 10px 16px 8px; background: #f7faf7; }
     .cat-label { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #2d7a4f; }
     .cat-dot { width: 8px; height: 8px; border-radius: 50%; opacity: 0.8; flex-shrink: 0; }
@@ -170,6 +171,75 @@
       display: inline; font-size: 11.5px; color: #888;
       font-style: italic; margin-left: 4px;
     }
+
+    /* -- SF type tooltip -- */
+    .sf-type-tip {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 1.5px solid #c8d5c9; color: #8fb49a;
+      font-size: 9px; font-weight: 700; font-style: normal;
+      line-height: 1;
+      cursor: default; position: relative; margin-left: 4px;
+      vertical-align: middle; user-select: none; flex-shrink: 0;
+    }
+    .sf-type-tip::after {
+      content: attr(data-type);
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 5px); left: 0;
+      transform: none;
+      background: #343539; color: #fff;
+      font-size: 10px; font-weight: 600;
+      border-radius: 4px; padding: 3px 7px;
+      white-space: normal; word-break: break-word; width: 160px;
+      z-index: 9999; pointer-events: none;
+    }
+    .sf-type-tip:hover::after { display: block; }
+
+    /* -- Column header info icon -- */
+    .th-tip {
+      display: none;
+      align-items: center; justify-content: center;
+      width: 13px; height: 13px; border-radius: 50%;
+      border: 1.5px solid #ccc; color: #aaa;
+      font-size: 8px; font-weight: 700; font-style: normal;
+      text-transform: none; line-height: 1;
+      cursor: default; position: relative;
+      margin-left: 4px; vertical-align: middle;
+      user-select: none; flex-shrink: 0;
+    }
+    .th-tip.has-text { display: inline-flex; }
+
+    /* -- Category header info icon -- */
+    .cat-tip {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 13px; height: 13px; border-radius: 50%;
+      border: 1.5px solid #a0c8a8; color: #2d7a4f;
+      font-size: 8px; font-weight: 700; font-style: normal;
+      line-height: 1; text-transform: none;
+      cursor: default; position: relative;
+      margin-left: 6px; vertical-align: middle;
+      user-select: none; flex-shrink: 0;
+    }
+
+    /* -- Shared JS tooltip -- */
+    #info-tooltip {
+      display: none;
+      position: fixed;
+      background: #343539; color: #fff;
+      font-size: 11px; font-weight: 500;
+      border-radius: 6px; padding: 6px 10px;
+      white-space: normal; word-break: break-word; max-width: 240px;
+      text-align: left; z-index: 9999;
+      pointer-events: none; line-height: 1.45;
+    }
+
+    /* -- Category sub-text -- */
+    .cat-subtext {
+      font-size: 11px; color: #2d7a4f; font-style: italic;
+      margin-top: 4px; font-weight: 400; letter-spacing: 0;
+      text-transform: none;
+    }
   </style>
 </head>
 <body>
@@ -204,7 +274,7 @@
     </select>
     <select class="filter-select" id="labelFilter" onchange="filterTable()">
       <option value="">All Labels</option>
-      <option value="company-identity">Company Identity</option>
+      <option value="company-identity">Entity Identity</option>
       <option value="location-geography">Location &amp; Geography</option>
       <option value="corporate-structure">Corporate Structure</option>
       <option value="financial-profile">Financial Profile</option>
@@ -239,12 +309,12 @@
         </colgroup>
         <thead>
           <tr>
-            <th>Labels</th>
-            <th>Datapoint</th>
-            <th>Description</th>
-            <th>Output Fields</th>
-            <th>Example / Possible Values</th>
-            <th>Source</th>
+            <th>Labels <i class="th-tip" id="tip-labels"></i></th>
+            <th>Datapoint <i class="th-tip" id="tip-datapoint"></i></th>
+            <th>Description <i class="th-tip" id="tip-description"></i></th>
+            <th>Output Fields <i class="th-tip" id="tip-output_fields"></i></th>
+            <th>Example / Possible Values <i class="th-tip" id="tip-example_values"></i></th>
+            <th>Source <i class="th-tip" id="tip-source"></i></th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -253,6 +323,8 @@
     </div>
   </div>
 </div>
+
+<div id="info-tooltip"></div>
 
 <script>
 var allDatapoints = [];
@@ -279,7 +351,7 @@ function escapeHtml(str) {
 }
 
 var LABEL_DISPLAY = {
-  'company-identity': 'Company Identity',
+  'company-identity': 'Entity Identity',
   'location-geography': 'Location & Geography',
   'corporate-structure': 'Corporate Structure',
   'financial-profile': 'Financial Profile',
@@ -293,6 +365,23 @@ var LABEL_DISPLAY = {
   'operations': 'Operations',
   'industry-market': 'Industry & Market'
 };
+
+var CAT_SUBTEXT = {
+  'Technographics': 'Technographics can be customised based on any publicly available criteria. These are specific examples.',
+  'People Metrics': 'People Metrics can be customised based on any publicly available criteria. These are specific examples.',
+  'Hiring Signals': 'Hiring Signals can be customised based on any publicly available criteria. These are specific examples.'
+};
+
+var CAT_HELPTEXT_KEY = {
+  'Entity Data':       'cat_entity_data',
+  'Firmographics':     'cat_firmographics',
+  'Technographics':    'cat_technographics',
+  'People Metrics':    'cat_people_metrics',
+  'Hiring Signals':    'cat_hiring_signals',
+  'Custom Enrichment': 'cat_custom_enrichment'
+};
+
+var columnHelptext = {};
 
 var CAT_COLOURS = {
   'Entity Data':        { dot: '#98a59c', bg: '#f0f6f1', text: '#343539' },
@@ -349,11 +438,18 @@ function renderTable() {
 
     var catRow = document.createElement('tr');
     catRow.className = 'cat-row';
+    var subtext = CAT_SUBTEXT[cat] ? '<div class="cat-subtext">' + escapeHtml(CAT_SUBTEXT[cat]) + '</div>' : '';
+    var catHtKey = CAT_HELPTEXT_KEY[cat] || '';
+    var catHtText = catHtKey && columnHelptext[catHtKey] ? columnHelptext[catHtKey] : '';
+    var catTipHtml = catHtText
+      ? '<i class="cat-tip" data-tip="' + escapeHtml(catHtText) + '">i</i>'
+      : '';
     catRow.innerHTML = '<td colspan="6"><div class="cat-row-inner"><span class="cat-label">' +
       '<span class="cat-dot" style="background:' + colours.dot + ';"></span>' +
       escapeHtml(cat) +
       ' <span class="cat-count" style="background:' + colours.bg + ';color:' + colours.text + ';">' + dps.length + '</span>' +
-      '</span></div></td>';
+      catTipHtml +
+      '</span>' + subtext + '</div></td>';
     tbody.appendChild(catRow);
 
     dps.forEach(function(dp) {
@@ -385,7 +481,8 @@ function renderTable() {
       var dpFields = dp.fields || [];
       var fieldsHtml = dpFields.length > 0
         ? '<ul class="fields-list">' + dpFields.map(function(f) {
-            return '<li><span class="field-tag">' + escapeHtml(f.displayName) + '</span></li>';
+            var tipHtml = f.sfFieldType ? '<i class="sf-type-tip" data-type="' + escapeHtml(f.sfFieldType) + '">i</i>' : '';
+            return '<li><span class="field-tag">' + escapeHtml(f.displayName) + '</span>' + tipHtml + '</li>';
           }).join('') + '</ul>'
         : '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
 
@@ -525,7 +622,68 @@ function selectChip(chipEl, rowId) {
   });
 }
 
+// Shared tooltip for .th-tip and .cat-tip
+(function() {
+  var tooltip = document.getElementById('info-tooltip');
+
+  function showTip(el) {
+    var text = el.getAttribute('data-tip');
+    if (!text) return;
+    tooltip.textContent = text;
+    tooltip.style.display = 'block';
+    var rect = el.getBoundingClientRect();
+    var top = rect.bottom + 6;
+    var left = rect.left;
+    // Keep within right edge of viewport
+    tooltip.style.left = '0px';
+    tooltip.style.top = top + 'px';
+    tooltip.style.display = 'block';
+    var tipRect = tooltip.getBoundingClientRect();
+    var clampedLeft = Math.min(left, window.innerWidth - tipRect.width - 8);
+    tooltip.style.left = Math.max(8, clampedLeft) + 'px';
+  }
+
+  function hideTip() {
+    tooltip.style.display = 'none';
+  }
+
+  document.addEventListener('mouseover', function(e) {
+    var el = e.target.closest('.th-tip, .cat-tip');
+    if (el) showTip(el);
+  });
+
+  document.addEventListener('mouseout', function(e) {
+    var el = e.target.closest('.th-tip, .cat-tip');
+    if (el) hideTip();
+  });
+})();
+
 loadDatapoints();
+
+function loadHelptext() {
+  fetch('/api/helptext')
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      columnHelptext = data;
+      // Column header icons
+      var colKeys = ['labels', 'datapoint', 'description', 'output_fields', 'example_values', 'source'];
+      colKeys.forEach(function(key) {
+        var text = data[key] || '';
+        var el = document.getElementById('tip-' + key);
+        if (!el) return;
+        if (text) {
+          el.setAttribute('data-tip', text);
+          el.textContent = 'i';
+          el.classList.add('has-text');
+        }
+      });
+      // Re-render table so category tips pick up the loaded helptext
+      renderTable();
+    })
+    .catch(function() {});
+}
+
+loadHelptext();
 </script>
 
 </body>
