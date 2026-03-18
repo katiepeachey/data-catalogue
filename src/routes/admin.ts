@@ -4,10 +4,12 @@ import { getSubmission, updateSubmission } from '../store';
 import { getAllSubmissionsWithMeta, getDatapointWithMeta, toggleVisibility } from '../db/datapoints';
 import { getFieldsForDatapoint, updateFieldConfig, addField as addFieldToDatapoint, FieldConfigUpdate } from '../db/datapointFields';
 import { getLocalDb } from '../db/local';
+import { getAllCleaningFields, getCleaningFieldsByIds } from '../db/cleaningFields';
 import { queueView } from '../views/queueView';
 import { reviewView } from '../views/reviewView';
 import { newDatapointView } from '../views/newDatapointView';
 import { helptextView } from '../views/helptextView';
+import { fieldBuilderView, EnrichmentDatapoint } from '../views/fieldBuilderView';
 import { getColumnHelptext, setColumnHelptext } from '../db/columnHelptext';
 import { sendRejectionNotification } from '../slack';
 import { Category, Label, Source, SfFieldType, DatapointField } from '../types';
@@ -256,6 +258,125 @@ router.post('/new', (req: Request, res: Response) => {
   }
 
   res.redirect('/admin/queue?msg=Datapoint+created+successfully');
+});
+
+// ─── Field Builder ─────────────────────────────────────────────────────────
+
+function getEnrichmentDatapoints(): EnrichmentDatapoint[] {
+  const db = getLocalDb();
+  const rows = db.prepare(
+    `SELECT id, name, category FROM datapoints
+     WHERE status = 'approved' AND visible = 1
+     ORDER BY category ASC, name ASC`
+  ).all() as { id: string; name: string; category: string }[];
+
+  return rows.map((dp) => {
+    const fields = getFieldsForDatapoint(dp.id)
+      .filter((f: DatapointField) => f.visible)
+      .map((f: DatapointField) => ({
+        fieldName: f.fieldName,
+        displayName: f.displayName,
+        sfFieldType: f.sfFieldType,
+      }));
+    return { id: dp.id, name: dp.name, category: dp.category, fields };
+  });
+}
+
+// GET /admin/field-builder
+router.get('/field-builder', (_req: Request, res: Response) => {
+  const fieldsByCrm = getAllCleaningFields();
+  const datapoints = getEnrichmentDatapoints();
+  res.send(fieldBuilderView(fieldsByCrm, datapoints));
+});
+
+// POST /admin/field-builder/export
+router.post('/field-builder/export', (req: Request, res: Response) => {
+  const body = req.body as Record<string, string | string[]>;
+  const crmType = (body.crm_type as string) || 'salesforce';
+
+  const rawCleaning = body.selected_cleaning;
+  const selectedCleaningIds: string[] = Array.isArray(rawCleaning)
+    ? rawCleaning
+    : rawCleaning ? [rawCleaning] : [];
+
+  const rawEnrichment = body.selected_enrichment;
+  const selectedEnrichmentIds: string[] = Array.isArray(rawEnrichment)
+    ? rawEnrichment
+    : rawEnrichment ? [rawEnrichment] : [];
+
+  const isSalesforce = crmType === 'salesforce';
+
+  function sfFieldName(fieldName: string): string {
+    return isSalesforce ? `${fieldName}__c` : fieldName;
+  }
+
+  // Build CSV rows
+  const csvRows: string[][] = [];
+
+  // Header
+  csvRows.push(['Module', 'Label', 'Field Name', 'SF Field Type', 'Length', 'Help Text', 'Priority']);
+
+  // Cleaning fields — ordered required → recommended → optional
+  if (selectedCleaningIds.length > 0) {
+    const cleaningFields = getCleaningFieldsByIds(selectedCleaningIds)
+      .filter((f) => f.crmType === crmType);
+
+    const order = ['required', 'recommended', 'optional'];
+    cleaningFields.sort((a, b) => {
+      const ai = order.indexOf(a.category);
+      const bi = order.indexOf(b.category);
+      if (ai !== bi) return ai - bi;
+      return a.displayOrder - b.displayOrder;
+    });
+
+    for (const f of cleaningFields) {
+      csvRows.push([
+        'CRM Cleaning',
+        f.label,
+        sfFieldName(f.fieldName),
+        f.fieldType,
+        f.fieldLength != null ? String(f.fieldLength) : '',
+        f.helpText,
+        f.category.charAt(0).toUpperCase() + f.category.slice(1),
+      ]);
+    }
+  }
+
+  // Enrichment fields
+  if (selectedEnrichmentIds.length > 0) {
+    const allDatapoints = getEnrichmentDatapoints();
+    const selectedDps = allDatapoints.filter((dp) => selectedEnrichmentIds.includes(dp.id));
+
+    for (const dp of selectedDps) {
+      for (const field of dp.fields) {
+        csvRows.push([
+          'Enrichment',
+          field.displayName,
+          sfFieldName(field.fieldName),
+          field.sfFieldType,
+          '',
+          '',
+          'Recommended',
+        ]);
+      }
+    }
+  }
+
+  // Escape CSV cell
+  function csvCell(val: string): string {
+    if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+      return `"${val.replace(/"/g, '""')}"`;
+    }
+    return val;
+  }
+
+  const csv = csvRows.map((row) => row.map(csvCell).join(',')).join('\r\n');
+  const today = new Date().toISOString().slice(0, 10);
+  const filename = `kernel_field_set_${crmType}_${today}.csv`;
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(csv);
 });
 
 export default router;

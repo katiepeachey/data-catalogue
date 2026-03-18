@@ -208,6 +208,12 @@ export function layout(title: string, body: string): string {
       </svg>
       Review Queue
     </a>
+    <a class="nav-link" href="/admin/field-builder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+      </svg>
+      Field Builder
+    </a>
     <form method="POST" action="/admin/logout" style="margin:0;">
       <button type="submit" class="btn-logout">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
