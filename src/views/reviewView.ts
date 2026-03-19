@@ -131,72 +131,86 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
       : 'e.g. $12M';
 
     return `
-    <tr>
-      <td>
-        <span class="field-tag" style="font-size:11px;">${escapeHtml(f.fieldName)}</span>
-        <input type="hidden" name="fields[${i}][fieldName]" value="${escapeHtml(f.fieldName)}" />
-      </td>
-      <td>
-        <input class="form-input" type="text" name="fields[${i}][displayName]"
-          value="${escapeHtml(f.displayName)}" style="padding:6px 8px;font-size:12px;" />
-      </td>
-      <td>
-        <select class="form-select" name="fields[${i}][sfFieldType]" style="padding:6px 8px;font-size:12px;"
-          onchange="autoMapDynamics(this, ${i})">
-          ${SF_FIELD_TYPES.map((t) =>
-            `<option value="${t}"${t === f.sfFieldType ? ' selected' : ''}>${t}</option>`
-          ).join('')}
-        </select>
-      </td>
-      <td>
-        <select class="form-select" name="fields[${i}][dynamicsFieldType]" id="dynType_${i}" style="padding:6px 8px;font-size:12px;">
-          <option value="${escapeHtml(f.dynamicsFieldType)}">${escapeHtml(f.dynamicsFieldType || '—')}</option>
-          ${DYNAMICS_FIELD_TYPES.filter((t) => t !== f.dynamicsFieldType).map((t) =>
-            `<option value="${t}">${t}</option>`
-          ).join('')}
-        </select>
-      </td>
-      <td>
-        <input class="form-input" type="number" name="fields[${i}][fieldLength]"
-          value="${f.fieldLength != null ? f.fieldLength : ''}"
-          placeholder="—" style="padding:6px 8px;font-size:12px;width:60px;" />
-      </td>
-      <td style="text-align:center;">
-        <input type="checkbox" name="fields[${i}][visible]" value="1"${f.visible ? ' checked' : ''}
-          style="width:16px;height:16px;accent-color:#8fb49a;" />
-      </td>
-      <td>
-        <input class="form-input" type="number" name="fields[${i}][sortOrder]"
-          value="${f.sortOrder}" style="padding:6px 8px;font-size:12px;width:50px;" />
-      </td>
-      <td>
+    <div class="field-card" id="fieldCard_${i}">
+      <input type="hidden" name="fields[${i}][fieldName]" value="${escapeHtml(f.fieldName)}" />
+
+      <div class="field-card-header">
+        <span class="field-tag">${escapeHtml(f.fieldName)}</span>
+        <div class="field-card-header-right">
+          <label class="field-vis-label">
+            <input type="checkbox" name="fields[${i}][visible]" value="1"${f.visible ? ' checked' : ''}
+              style="accent-color:#343539;width:14px;height:14px;" />
+            Visible
+          </label>
+          <div class="field-order-wrap">
+            <span>Order</span>
+            <input class="form-input" type="number" name="fields[${i}][sortOrder]"
+              value="${f.sortOrder}" style="width:52px;" />
+          </div>
+        </div>
+      </div>
+
+      <div class="field-card-row">
+        <div class="field-card-col">
+          <label class="field-card-label">Display Name</label>
+          <input class="form-input" type="text" name="fields[${i}][displayName]"
+            value="${escapeHtml(f.displayName)}" />
+        </div>
+        <div class="field-card-col">
+          <label class="field-card-label">SF Type</label>
+          <select class="form-select" name="fields[${i}][sfFieldType]"
+            onchange="autoMapDynamics(this, ${i})">
+            ${SF_FIELD_TYPES.map((t) =>
+              `<option value="${t}"${t === f.sfFieldType ? ' selected' : ''}>${t}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="field-card-col">
+          <label class="field-card-label">Dynamics Type</label>
+          <select class="form-select" name="fields[${i}][dynamicsFieldType]" id="dynType_${i}">
+            <option value="${escapeHtml(f.dynamicsFieldType)}">${escapeHtml(f.dynamicsFieldType || '—')}</option>
+            ${DYNAMICS_FIELD_TYPES.filter((t) => t !== f.dynamicsFieldType).map((t) =>
+              `<option value="${t}">${t}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="field-card-col-sm">
+          <label class="field-card-label">Length</label>
+          <input class="form-input" type="number" id="fieldLen_${i}"
+            name="fields[${i}][fieldLength]"
+            value="${f.fieldLength != null ? f.fieldLength : ''}"
+            placeholder="—" style="width:80px;" />
+        </div>
+        <div class="field-card-col">
+          <label class="field-card-label">Example</label>
+          <input type="hidden" name="fields[${i}][exampleValue]" id="exVal_${i}"
+            value="${escapeHtml(f.exampleValue || '')}" />
+          ${hasOptions ? `
+          <div class="admin-chips" id="adminChips_${i}"
+            data-map="${escapeHtml(JSON.stringify(perOptionMap))}">
+            ${chipsHtml}
+          </div>
+          <input class="form-input" type="text" id="optInput_${i}"
+            value="${firstOptExample}"
+            placeholder="${firstOptPlaceholder}"
+            style="margin-top:5px;"
+            oninput="updateChipExample(${i})" />
+          ` : `
+          <input class="form-input" type="text" id="singleInput_${i}"
+            value="${escapeHtml(exampleSingle)}"
+            placeholder="e.g. $12M"
+            oninput="document.getElementById('exVal_${i}').value=this.value" />
+          `}
+        </div>
+      </div>
+
+      <div class="field-card-help-row">
+        <label class="field-card-label">Help Text</label>
         <input class="form-input" type="text" name="fields[${i}][helpText]"
           value="${escapeHtml(f.helpText)}"
-          placeholder="Help text for implementers..."
-          style="padding:6px 8px;font-size:12px;" />
-      </td>
-      <td>
-        <input type="hidden" name="fields[${i}][exampleValue]" id="exVal_${i}"
-          value="${escapeHtml(f.exampleValue || '')}" />
-        ${hasOptions ? `
-        <div class="admin-chips" id="adminChips_${i}"
-          data-map="${escapeHtml(JSON.stringify(perOptionMap))}">
-          ${chipsHtml}
-        </div>
-        <input class="form-input" type="text" id="optInput_${i}"
-          value="${firstOptExample}"
-          placeholder="${firstOptPlaceholder}"
-          style="margin-top:5px;padding:6px 8px;font-size:12px;width:100%;"
-          oninput="updateChipExample(${i})" />
-        ` : `
-        <input class="form-input" type="text" id="singleInput_${i}"
-          value="${escapeHtml(exampleSingle)}"
-          placeholder="e.g. $12M"
-          style="padding:6px 8px;font-size:12px;"
-          oninput="document.getElementById('exVal_${i}').value=this.value" />
-        `}
-      </td>
-    </tr>`;
+          placeholder="e.g. Reference to parent account record — used for hierarchy linking" />
+      </div>
+    </div>`;
   }).join('');
 
   const body = `
@@ -242,27 +256,12 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
                 Field Configuration
                 <span class="label-hint">Configure display names, SF types, and visibility per field</span>
               </label>
-              <div class="field-config-table-wrap">
-                <table class="field-config-table" id="fieldConfigTable">
-                  <thead>
-                    <tr>
-                      <th style="width:13%;">Original Name</th>
-                      <th style="width:13%;">Display Name</th>
-                      <th style="width:11%;">SF Type</th>
-                      <th style="width:12%;">Dynamics Type</th>
-                      <th style="width:6%;">Length</th>
-                      <th style="width:8%;">Visible</th>
-                      <th style="width:6%;">Order</th>
-                      <th style="width:19%;">Help Text</th>
-                      <th style="width:12%;">Example</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${fieldConfigRows}
-                  </tbody>
-                </table>
-                ${fields.length === 0 ? '<p style="color:#aaa;font-size:12px;padding:12px;">No fields configured yet. Add fields below or run a sync.</p>' : ''}
-                <button type="button" class="btn btn-outline btn-sm" style="margin:8px 10px;" onclick="addFieldRow()">
+              <div class="field-config-list-wrap">
+                <div class="field-config-list" id="fieldConfigTable">
+                  ${fieldConfigRows}
+                  ${fields.length === 0 ? '<p style="color:#aaa;font-size:13px;padding:16px;">No fields configured yet. Add fields below or run a sync.</p>' : ''}
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" style="margin:12px 18px;" onclick="addFieldRow()">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
                     <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                   </svg>
@@ -537,22 +536,45 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
       .admin-chip:hover { background: #e4e8e4; border-color: #c8d5c9; }
       .admin-chip.active { background: #343539; color: #fff; border-color: #343539; }
 
-      /* -- Field config table -- */
-      .field-config-table-wrap {
-        background: #fafcfa; border: 1px solid #e8ece8;
-        border-radius: 8px; overflow: hidden;
+      /* -- Field config cards -- */
+      .field-config-list-wrap { display: flex; flex-direction: column; gap: 0; }
+      .field-config-list { display: flex; flex-direction: column; }
+
+      .field-card {
+        padding: 16px 18px;
+        border-bottom: 1px solid #eaebee;
+        display: flex; flex-direction: column; gap: 12px;
       }
-      .field-config-table { width: 100%; border-collapse: collapse; }
-      .field-config-table thead th {
-        background: #f0f2f0; color: #888; font-size: 10px; font-weight: 600;
-        text-transform: uppercase; letter-spacing: 0.06em;
-        padding: 8px 10px; text-align: left; border-bottom: 1px solid #e0e4e0;
+      .field-card:last-child { border-bottom: none; }
+
+      .field-card-header {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
       }
-      .field-config-table tbody td {
-        padding: 8px 10px; border-bottom: 1px solid #f0f2f0;
-        vertical-align: top; font-size: 12px;
+      .field-card-header-right {
+        display: flex; align-items: center; gap: 16px; flex-shrink: 0;
       }
-      .field-config-table tbody tr:last-child td { border-bottom: none; }
+      .field-vis-label {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 13px; color: #555; cursor: pointer; user-select: none;
+      }
+      .field-order-wrap {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 13px; color: #555;
+      }
+
+      .field-card-row {
+        display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+      }
+      .field-card-col { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 5px; }
+      .field-card-col-sm { width: 90px; flex-shrink: 0; display: flex; flex-direction: column; gap: 5px; }
+      .field-card-label {
+        font-size: 11px; font-weight: 600; color: #6b7280;
+        letter-spacing: 0.04em; text-transform: uppercase;
+      }
+
+      .field-card-help-row {
+        display: flex; flex-direction: column; gap: 5px;
+      }
 
       /* -- SF type badge -- */
       .sf-type-badge {
@@ -682,26 +704,36 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
 
     <script>
       var SF_TO_DYNAMICS_MAP = ${sfToDynJson};
+      var SF_DEFAULT_LENGTHS = {
+        'Text': 255, 'Text (Long)': 1000, 'Text Area (Long)': 5000,
+        'Long Text Area': 32768, 'URL': 255, 'Email': 254,
+        'Phone': 40, 'Picklist': 255, 'Multi-Select Picklist': 4099, 'Lookup': 18
+      };
 
       function autoMapDynamics(sfSelect, fieldIdx) {
         var sfType = sfSelect.value;
+
+        // Map Dynamics type
         var mapped = SF_TO_DYNAMICS_MAP[sfType] || '';
         var dynSel = document.getElementById('dynType_' + fieldIdx);
         if (dynSel && mapped) {
-          // Only auto-map if the current Dynamics value matches the old auto-mapped value
-          // (i.e. hasn't been manually customised)
           for (var i = 0; i < dynSel.options.length; i++) {
-            if (dynSel.options[i].value === mapped) {
-              dynSel.value = mapped;
-              return;
-            }
+            if (dynSel.options[i].value === mapped) { dynSel.value = mapped; break; }
           }
-          // Add it if not in list
-          var opt = document.createElement('option');
-          opt.value = mapped;
-          opt.textContent = mapped;
-          dynSel.insertBefore(opt, dynSel.firstChild);
-          dynSel.value = mapped;
+          // Add option if not present
+          if (dynSel.value !== mapped) {
+            var opt = document.createElement('option');
+            opt.value = mapped; opt.textContent = mapped;
+            dynSel.insertBefore(opt, dynSel.firstChild);
+            dynSel.value = mapped;
+          }
+        }
+
+        // Auto-fill default length
+        var lenInp = document.getElementById('fieldLen_' + fieldIdx);
+        if (lenInp) {
+          var defaultLen = SF_DEFAULT_LENGTHS[sfType];
+          lenInp.value = defaultLen !== undefined ? defaultLen : '';
         }
       }
 
@@ -823,93 +855,89 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         });
       });
 
-      // Field config: add new row
+      // Field config: add new card
       var fieldRowCount = ${fields.length};
 
       function addFieldRow() {
-        var tbody = document.querySelector('#fieldConfigTable tbody');
+        var list = document.getElementById('fieldConfigTable');
         var i = fieldRowCount++;
-        var tr = document.createElement('tr');
 
+        var card = document.createElement('div');
+        card.className = 'field-card';
+        card.id = 'fieldCard_' + i;
+
+        // Hidden field name
+        var hiddenName = document.createElement('input');
+        hiddenName.type = 'hidden';
+        hiddenName.name = 'fields[' + i + '][fieldName]';
+        card.appendChild(hiddenName);
+
+        // Header row
+        var header = document.createElement('div');
+        header.className = 'field-card-header';
+        var nameInp = document.createElement('input');
+        nameInp.className = 'form-input';
+        nameInp.type = 'text';
+        nameInp.placeholder = 'field_name';
+        nameInp.style.cssText = 'flex:1;max-width:260px;';
+        nameInp.addEventListener('input', function() { hiddenName.value = nameInp.value; });
+        var headerRight = document.createElement('div');
+        headerRight.className = 'field-card-header-right';
+        headerRight.innerHTML = '<label class="field-vis-label"><input type="checkbox" name="fields[' + i + '][visible]" value="1" checked style="accent-color:#343539;width:14px;height:14px;" /> Visible</label>'
+          + '<div class="field-order-wrap"><span>Order</span><input class="form-input" type="number" name="fields[' + i + '][sortOrder]" value="' + i + '" style="width:52px;" /></div>';
+        header.appendChild(nameInp);
+        header.appendChild(headerRight);
+        card.appendChild(header);
+
+        // Types row
+        var row1 = document.createElement('div');
+        row1.className = 'field-card-row';
+
+        var colDN = document.createElement('div'); colDN.className = 'field-card-col';
+        colDN.innerHTML = '<label class="field-card-label">Display Name</label><input class="form-input" type="text" name="fields[' + i + '][displayName]" placeholder="Display Name" />';
+
+        var colSF = document.createElement('div'); colSF.className = 'field-card-col';
+        var sfLabel = document.createElement('label'); sfLabel.className = 'field-card-label'; sfLabel.textContent = 'SF Type';
         var sel = document.createElement('select');
         sel.className = 'form-select';
         sel.name = 'fields[' + i + '][sfFieldType]';
-        sel.style.cssText = 'padding:6px 8px;font-size:12px;';
         sel.innerHTML = '${sfTypeOptions}';
         sel.onchange = function() { autoMapDynamics(sel, i); };
+        colSF.appendChild(sfLabel); colSF.appendChild(sel);
 
+        var colDyn = document.createElement('div'); colDyn.className = 'field-card-col';
+        var dynLabel = document.createElement('label'); dynLabel.className = 'field-card-label'; dynLabel.textContent = 'Dynamics Type';
         var dynSel = document.createElement('select');
         dynSel.className = 'form-select';
         dynSel.name = 'fields[' + i + '][dynamicsFieldType]';
         dynSel.id = 'dynType_' + i;
-        dynSel.style.cssText = 'padding:6px 8px;font-size:12px;';
         dynSel.innerHTML = '${dynTypeOptions}';
+        colDyn.appendChild(dynLabel); colDyn.appendChild(dynSel);
 
-        var td1 = document.createElement('td');
-        td1.innerHTML = '<input class="form-input" type="text" name="fields[' + i + '][fieldName]" placeholder="field_name" style="padding:6px 8px;font-size:12px;" />';
-        var td2 = document.createElement('td');
-        td2.innerHTML = '<input class="form-input" type="text" name="fields[' + i + '][displayName]" placeholder="Display Name" style="padding:6px 8px;font-size:12px;" />';
-        var td3 = document.createElement('td'); td3.appendChild(sel);
-        var td3b = document.createElement('td'); td3b.appendChild(dynSel);
-        var td3c = document.createElement('td');
-        td3c.innerHTML = '<input class="form-input" type="number" name="fields[' + i + '][fieldLength]" placeholder="—" style="padding:6px 8px;font-size:12px;width:60px;" />';
-        var td4 = document.createElement('td');
-        td4.style.textAlign = 'center';
-        td4.innerHTML = '<input type="checkbox" name="fields[' + i + '][visible]" value="1" checked style="width:16px;height:16px;accent-color:#8fb49a;" />';
-        var td5 = document.createElement('td');
-        td5.innerHTML = '<input class="form-input" type="number" name="fields[' + i + '][sortOrder]" value="' + i + '" style="padding:6px 8px;font-size:12px;width:50px;" />';
-        var td5b = document.createElement('td');
-        td5b.innerHTML = '<input class="form-input" type="text" name="fields[' + i + '][helpText]" placeholder="Help text..." style="padding:6px 8px;font-size:12px;" />';
+        var colLen = document.createElement('div'); colLen.className = 'field-card-col-sm';
+        colLen.innerHTML = '<label class="field-card-label">Length</label><input class="form-input" type="number" id="fieldLen_' + i + '" name="fields[' + i + '][fieldLength]" placeholder="—" style="width:80px;" />';
 
-        // Example cell — matches server-rendered rows
-        var td6 = document.createElement('td');
+        var colEx = document.createElement('div'); colEx.className = 'field-card-col';
+        var exLabel = document.createElement('label'); exLabel.className = 'field-card-label'; exLabel.textContent = 'Example';
         var hidden = document.createElement('input');
-        hidden.type = 'hidden';
-        hidden.name = 'fields[' + i + '][exampleValue]';
-        hidden.id = 'exVal_' + i;
-        td6.appendChild(hidden);
+        hidden.type = 'hidden'; hidden.name = 'fields[' + i + '][exampleValue]'; hidden.id = 'exVal_' + i;
+        var singleInp = document.createElement('input');
+        singleInp.className = 'form-input'; singleInp.type = 'text';
+        singleInp.id = 'singleInput_' + i; singleInp.placeholder = 'e.g. $12M';
+        singleInp.oninput = function() { hidden.value = singleInp.value; };
+        colEx.appendChild(exLabel); colEx.appendChild(hidden); colEx.appendChild(singleInp);
 
-        if (classifierOpts.length > 0) {
-          // Chip-based per-option input
-          adminChipMaps[i] = {};
-          var chipsDiv = document.createElement('div');
-          chipsDiv.className = 'admin-chips';
-          chipsDiv.id = 'adminChips_' + i;
-          chipsDiv.setAttribute('data-map', '{}');
-          classifierOpts.forEach(function(opt, oi) {
-            var chip = document.createElement('span');
-            chip.className = 'admin-chip' + (oi === 0 ? ' active' : '');
-            chip.setAttribute('data-opt', opt);
-            chip.textContent = opt;
-            chip.addEventListener('click', function() { adminSelectChip(chip, i); });
-            chipsDiv.appendChild(chip);
-          });
-          td6.appendChild(chipsDiv);
-          adminActiveChip[i] = classifierOpts[0] || null;
+        row1.appendChild(colDN); row1.appendChild(colSF); row1.appendChild(colDyn);
+        row1.appendChild(colLen); row1.appendChild(colEx);
+        card.appendChild(row1);
 
-          var optInp = document.createElement('input');
-          optInp.className = 'form-input';
-          optInp.type = 'text';
-          optInp.id = 'optInput_' + i;
-          optInp.placeholder = classifierOpts[0] ? 'Example for ' + classifierOpts[0] + '...' : '';
-          optInp.style.cssText = 'margin-top:5px;padding:6px 8px;font-size:12px;width:100%;';
-          optInp.addEventListener('input', function() { updateChipExample(i); });
-          td6.appendChild(optInp);
-        } else {
-          var singleInp = document.createElement('input');
-          singleInp.className = 'form-input';
-          singleInp.type = 'text';
-          singleInp.id = 'singleInput_' + i;
-          singleInp.placeholder = 'e.g. $12M';
-          singleInp.style.cssText = 'padding:6px 8px;font-size:12px;';
-          singleInp.oninput = function() { hidden.value = singleInp.value; };
-          td6.appendChild(singleInp);
-        }
+        // Help text row
+        var helpRow = document.createElement('div');
+        helpRow.className = 'field-card-help-row';
+        helpRow.innerHTML = '<label class="field-card-label">Help Text</label><input class="form-input" type="text" name="fields[' + i + '][helpText]" placeholder="e.g. Reference to parent account record — used for hierarchy linking" />';
+        card.appendChild(helpRow);
 
-        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
-        tr.appendChild(td3b); tr.appendChild(td3c);
-        tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td5b); tr.appendChild(td6);
-        tbody.appendChild(tr);
+        list.appendChild(card);
       }
     </script>
   `;
