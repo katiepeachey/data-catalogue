@@ -113,10 +113,12 @@ function enrichmentPanel(datapoints: EnrichmentDatapoint[]): string {
         ${filterOptions}
       </select>
     </div>
-    ${datapoints.length === 0
-      ? '<p class="empty-panel">No approved datapoints found.</p>'
-      : groups
-    }`;
+    <div class="enrichment-groups">
+      ${datapoints.length === 0
+        ? '<p class="empty-panel">No approved datapoints found.</p>'
+        : groups
+      }
+    </div>`;
 }
 
 export function fieldBuilderView(
