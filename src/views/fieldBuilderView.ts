@@ -31,7 +31,7 @@ function fieldsByCategory(fields: CleaningField[]): Record<string, CleaningField
 }
 
 function cleaningPanel(fieldsByCrm: Record<string, CleaningField[]>): string {
-  const crmTypes = ['salesforce', 'dynamics', 'hubspot'];
+  const crmTypes = ['salesforce', 'dynamics'];
 
   const tabs = crmTypes.map((crm) =>
     `<button type="button" class="crm-tab" data-crm="${crm}" onclick="switchCrm('${crm}')">${CRM_LABELS[crm] ?? crm}</button>`

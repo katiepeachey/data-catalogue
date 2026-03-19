@@ -1,5 +1,6 @@
 import { query } from '../db/motherduck';
 import { upsertCleaningFields, CleaningField } from '../db/cleaningFields';
+import { getLocalDb } from '../db/local';
 
 interface CleaningFieldRow {
   id: string;
@@ -48,6 +49,8 @@ export async function syncCleaningFields(): Promise<number> {
     displayOrder: r.display_order,
   }));
 
+  // Full replace: clear local table first so removed fields don't persist
+  getLocalDb().prepare('DELETE FROM cleaning_fields').run();
   upsertCleaningFields(fields);
   console.log(`Synced ${fields.length} cleaning fields`);
   return fields.length;
