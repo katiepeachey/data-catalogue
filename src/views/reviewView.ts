@@ -91,6 +91,24 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
   const dynTypeOptions = DYNAMICS_FIELD_TYPES.map((t) => `<option value="${t}">${t}</option>`).join('');
   const sfToDynJson = JSON.stringify(SF_TO_DYNAMICS);
 
+  const LENGTH_OPTIONS = ['', 18, 40, 80, 100, 255, 500, 1000, 4000, 5000, 32768];
+  const lengthOptionsHtml = LENGTH_OPTIONS.map((v) =>
+    `<option value="${v}">${v === '' ? '— none' : v}</option>`
+  ).join('');
+
+  function fieldLengthSelect(idx: number, current: number | null): string {
+    const val = current != null ? current : '';
+    // If val isn't in the standard list, add it as an extra option
+    const extra = val !== '' && !LENGTH_OPTIONS.includes(val as number)
+      ? `<option value="${val}">${val}</option>`
+      : '';
+    return `<select class="form-select" name="fields[${idx}][fieldLength]" id="fieldLen_${idx}">
+      ${extra}${LENGTH_OPTIONS.map((v) =>
+        `<option value="${v}"${String(v) === String(val) ? ' selected' : ''}>${v === '' ? '— none' : v}</option>`
+      ).join('')}
+    </select>`;
+  }
+
   // Classifier options for per-option example UI
   let classifierOptions: string[] = [];
   if (submission.classifierOptionsSample) {
@@ -176,10 +194,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         </div>
         <div class="field-card-col-sm">
           <label class="field-card-label">Length</label>
-          <input class="form-input" type="number" id="fieldLen_${i}"
-            name="fields[${i}][fieldLength]"
-            value="${f.fieldLength != null ? f.fieldLength : ''}"
-            placeholder="—" style="width:80px;" />
+          ${fieldLengthSelect(i, f.fieldLength)}
         </div>
         <div class="field-card-col">
           <label class="field-card-label">Example</label>
@@ -729,11 +744,11 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
           }
         }
 
-        // Auto-fill default length
-        var lenInp = document.getElementById('fieldLen_' + fieldIdx);
-        if (lenInp) {
+        // Auto-select default length
+        var lenSel = document.getElementById('fieldLen_' + fieldIdx);
+        if (lenSel) {
           var defaultLen = SF_DEFAULT_LENGTHS[sfType];
-          lenInp.value = defaultLen !== undefined ? defaultLen : '';
+          lenSel.value = defaultLen !== undefined ? String(defaultLen) : '';
         }
       }
 
@@ -915,7 +930,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         colDyn.appendChild(dynLabel); colDyn.appendChild(dynSel);
 
         var colLen = document.createElement('div'); colLen.className = 'field-card-col-sm';
-        colLen.innerHTML = '<label class="field-card-label">Length</label><input class="form-input" type="number" id="fieldLen_' + i + '" name="fields[' + i + '][fieldLength]" placeholder="—" style="width:80px;" />';
+        colLen.innerHTML = '<label class="field-card-label">Length</label><select class="form-select" id="fieldLen_' + i + '" name="fields[' + i + '][fieldLength]">${lengthOptionsHtml}</select>';
 
         var colEx = document.createElement('div'); colEx.className = 'field-card-col';
         var exLabel = document.createElement('label'); exLabel.className = 'field-card-label'; exLabel.textContent = 'Example';
