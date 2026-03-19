@@ -208,6 +208,18 @@ export function layout(title: string, body: string): string {
       </svg>
       Review Queue
     </a>
+    <a class="nav-link" href="/admin/field-builder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+      </svg>
+      Field Builder
+    </a>
+    <a class="nav-link" href="/admin/cleaning-fields">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+      </svg>
+      Field Config
+    </a>
     <form method="POST" action="/admin/logout" style="margin:0;">
       <button type="submit" class="btn-logout">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
