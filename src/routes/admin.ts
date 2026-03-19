@@ -75,8 +75,12 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       fieldName?: string;
       displayName?: string;
       sfFieldType?: string;
+      dynamicsFieldType?: string;
+      fieldLength?: string;
+      helpText?: string;
       visible?: string;
       sortOrder?: string;
+      exampleValue?: string;
     }>) || [];
 
     const existingFields = getFieldsForDatapoint(submission.id);
@@ -89,17 +93,21 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       const fieldName = rf.fieldName;
       const displayName = rf.displayName || fieldName;
       const sfFieldType = (rf.sfFieldType as SfFieldType) || 'Text';
+      const dynamicsFieldType = rf.dynamicsFieldType || '';
+      const fieldLengthParsed = parseInt(rf.fieldLength ?? '', 10);
+      const fieldLength = isNaN(fieldLengthParsed) ? null : fieldLengthParsed;
+      const helpText = rf.helpText || '';
       const visible = rf.visible === '1';
       const sortOrderParsed = parseInt(rf.sortOrder ?? '', 10);
       const sortOrder = isNaN(sortOrderParsed) ? fi : sortOrderParsed;
-      const exampleValue = (rf as any).exampleValue || null;
+      const exampleValue = rf.exampleValue || null;
 
       if (existingFieldNames.has(fieldName)) {
-        fieldUpdates.push({ fieldName, displayName, sfFieldType, visible, sortOrder, exampleValue });
+        fieldUpdates.push({ fieldName, displayName, sfFieldType, dynamicsFieldType, fieldLength, helpText, visible, sortOrder, exampleValue });
       } else {
         // New field added manually via "Add Field" button
         addFieldToDatapoint(submission.id, fieldName, displayName, sfFieldType, exampleValue);
-        updateFieldConfig(submission.id, [{ fieldName, displayName, sfFieldType, visible, sortOrder, exampleValue }]);
+        updateFieldConfig(submission.id, [{ fieldName, displayName, sfFieldType, dynamicsFieldType, fieldLength, helpText, visible, sortOrder, exampleValue }]);
       }
     }
 
@@ -277,6 +285,9 @@ function getEnrichmentDatapoints(): EnrichmentDatapoint[] {
         fieldName: f.fieldName,
         displayName: f.displayName,
         sfFieldType: f.sfFieldType,
+        dynamicsFieldType: f.dynamicsFieldType,
+        fieldLength: f.fieldLength,
+        helpText: f.helpText,
       }));
     return { id: dp.id, name: dp.name, category: dp.category, fields };
   });
@@ -306,8 +317,13 @@ router.post('/field-builder/export', (req: Request, res: Response) => {
 
   const isSalesforce = crmType === 'salesforce';
 
-  function sfFieldName(fieldName: string): string {
+  function exportFieldName(fieldName: string): string {
     return isSalesforce ? `${fieldName}__c` : fieldName;
+  }
+
+  function enrichmentFieldType(field: { sfFieldType: string; dynamicsFieldType: string }): string {
+    if (isSalesforce) return field.sfFieldType;
+    return field.dynamicsFieldType || field.sfFieldType;
   }
 
   // Build CSV rows
@@ -333,7 +349,7 @@ router.post('/field-builder/export', (req: Request, res: Response) => {
       csvRows.push([
         'CRM Cleaning',
         f.label,
-        sfFieldName(f.fieldName),
+        exportFieldName(f.fieldName),
         f.fieldType,
         f.fieldLength != null ? String(f.fieldLength) : '',
         f.helpText,
@@ -352,10 +368,10 @@ router.post('/field-builder/export', (req: Request, res: Response) => {
         csvRows.push([
           'Enrichment',
           field.displayName,
-          sfFieldName(field.fieldName),
-          field.sfFieldType,
-          '',
-          '',
+          exportFieldName(field.fieldName),
+          enrichmentFieldType(field),
+          field.fieldLength != null ? String(field.fieldLength) : '',
+          field.helpText,
           'Recommended',
         ]);
       }

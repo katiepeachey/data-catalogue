@@ -5,7 +5,7 @@ export interface EnrichmentDatapoint {
   id: string;
   name: string;
   category: string;
-  fields: { fieldName: string; displayName: string; sfFieldType: string }[];
+  fields: { fieldName: string; displayName: string; sfFieldType: string; dynamicsFieldType: string; fieldLength: number | null; helpText: string }[];
 }
 
 const CRM_LABELS: Record<string, string> = {
@@ -67,7 +67,7 @@ function cleaningPanel(fieldsByCrm: Record<string, CleaningField[]>): string {
     return `
       <div class="crm-section" id="crm-section-${crm}" style="display:none;">
         ${fields.length === 0
-          ? `<p class="empty-panel">No fields synced yet for ${CRM_LABELS[crm] ?? crm}. Run a sync first.</p>`
+          ? `<p class="empty-panel">No fields synced yet for ${CRM_LABELS[crm] ?? crm}. <a href="/admin/sync-config" style="color:#343539;font-weight:600;">Run a sync</a> to populate.</p>`
           : groups
         }
       </div>`;

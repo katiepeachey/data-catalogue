@@ -1,4 +1,4 @@
-import { Label, Category, Source, SF_FIELD_TYPES, DatapointField } from '../types';
+import { Label, Category, Source, SF_FIELD_TYPES, DYNAMICS_FIELD_TYPES, SF_TO_DYNAMICS, DatapointField } from '../types';
 import { SubmissionWithMeta } from '../db/datapoints';
 import { layout, escapeHtml } from './layout';
 
@@ -88,6 +88,8 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
     submission.status.charAt(0).toUpperCase() + submission.status.slice(1);
 
   const sfTypeOptions = SF_FIELD_TYPES.map((t) => `<option value="${t}">${t}</option>`).join('');
+  const dynTypeOptions = DYNAMICS_FIELD_TYPES.map((t) => `<option value="${t}">${t}</option>`).join('');
+  const sfToDynJson = JSON.stringify(SF_TO_DYNAMICS);
 
   // Classifier options for per-option example UI
   let classifierOptions: string[] = [];
@@ -139,11 +141,25 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
           value="${escapeHtml(f.displayName)}" style="padding:6px 8px;font-size:12px;" />
       </td>
       <td>
-        <select class="form-select" name="fields[${i}][sfFieldType]" style="padding:6px 8px;font-size:12px;">
+        <select class="form-select" name="fields[${i}][sfFieldType]" style="padding:6px 8px;font-size:12px;"
+          onchange="autoMapDynamics(this, ${i})">
           ${SF_FIELD_TYPES.map((t) =>
             `<option value="${t}"${t === f.sfFieldType ? ' selected' : ''}>${t}</option>`
           ).join('')}
         </select>
+      </td>
+      <td>
+        <select class="form-select" name="fields[${i}][dynamicsFieldType]" id="dynType_${i}" style="padding:6px 8px;font-size:12px;">
+          <option value="${escapeHtml(f.dynamicsFieldType)}">${escapeHtml(f.dynamicsFieldType || '—')}</option>
+          ${DYNAMICS_FIELD_TYPES.filter((t) => t !== f.dynamicsFieldType).map((t) =>
+            `<option value="${t}">${t}</option>`
+          ).join('')}
+        </select>
+      </td>
+      <td>
+        <input class="form-input" type="number" name="fields[${i}][fieldLength]"
+          value="${f.fieldLength != null ? f.fieldLength : ''}"
+          placeholder="—" style="padding:6px 8px;font-size:12px;width:60px;" />
       </td>
       <td style="text-align:center;">
         <input type="checkbox" name="fields[${i}][visible]" value="1"${f.visible ? ' checked' : ''}
@@ -151,7 +167,13 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
       </td>
       <td>
         <input class="form-input" type="number" name="fields[${i}][sortOrder]"
-          value="${f.sortOrder}" style="padding:6px 8px;font-size:12px;width:60px;" />
+          value="${f.sortOrder}" style="padding:6px 8px;font-size:12px;width:50px;" />
+      </td>
+      <td>
+        <input class="form-input" type="text" name="fields[${i}][helpText]"
+          value="${escapeHtml(f.helpText)}"
+          placeholder="Help text for implementers..."
+          style="padding:6px 8px;font-size:12px;" />
       </td>
       <td>
         <input type="hidden" name="fields[${i}][exampleValue]" id="exVal_${i}"
@@ -224,12 +246,15 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
                 <table class="field-config-table" id="fieldConfigTable">
                   <thead>
                     <tr>
-                      <th style="width:18%;">Original Name</th>
-                      <th style="width:18%;">Display Name</th>
-                      <th style="width:16%;">SF Field Type</th>
-                      <th style="width:10%;">Visible</th>
-                      <th style="width:10%;">Order</th>
-                      <th style="width:28%;">Example</th>
+                      <th style="width:13%;">Original Name</th>
+                      <th style="width:13%;">Display Name</th>
+                      <th style="width:11%;">SF Type</th>
+                      <th style="width:12%;">Dynamics Type</th>
+                      <th style="width:6%;">Length</th>
+                      <th style="width:8%;">Visible</th>
+                      <th style="width:6%;">Order</th>
+                      <th style="width:19%;">Help Text</th>
+                      <th style="width:12%;">Example</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -656,6 +681,30 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
     </style>
 
     <script>
+      var SF_TO_DYNAMICS_MAP = ${sfToDynJson};
+
+      function autoMapDynamics(sfSelect, fieldIdx) {
+        var sfType = sfSelect.value;
+        var mapped = SF_TO_DYNAMICS_MAP[sfType] || '';
+        var dynSel = document.getElementById('dynType_' + fieldIdx);
+        if (dynSel && mapped) {
+          // Only auto-map if the current Dynamics value matches the old auto-mapped value
+          // (i.e. hasn't been manually customised)
+          for (var i = 0; i < dynSel.options.length; i++) {
+            if (dynSel.options[i].value === mapped) {
+              dynSel.value = mapped;
+              return;
+            }
+          }
+          // Add it if not in list
+          var opt = document.createElement('option');
+          opt.value = mapped;
+          opt.textContent = mapped;
+          dynSel.insertBefore(opt, dynSel.firstChild);
+          dynSel.value = mapped;
+        }
+      }
+
       var overlay     = document.getElementById('rejectOverlay');
       var rejectBtn   = document.getElementById('rejectBtn');
       var modalClose  = document.getElementById('modalClose');
@@ -787,17 +836,30 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         sel.name = 'fields[' + i + '][sfFieldType]';
         sel.style.cssText = 'padding:6px 8px;font-size:12px;';
         sel.innerHTML = '${sfTypeOptions}';
+        sel.onchange = function() { autoMapDynamics(sel, i); };
+
+        var dynSel = document.createElement('select');
+        dynSel.className = 'form-select';
+        dynSel.name = 'fields[' + i + '][dynamicsFieldType]';
+        dynSel.id = 'dynType_' + i;
+        dynSel.style.cssText = 'padding:6px 8px;font-size:12px;';
+        dynSel.innerHTML = '${dynTypeOptions}';
 
         var td1 = document.createElement('td');
         td1.innerHTML = '<input class="form-input" type="text" name="fields[' + i + '][fieldName]" placeholder="field_name" style="padding:6px 8px;font-size:12px;" />';
         var td2 = document.createElement('td');
         td2.innerHTML = '<input class="form-input" type="text" name="fields[' + i + '][displayName]" placeholder="Display Name" style="padding:6px 8px;font-size:12px;" />';
         var td3 = document.createElement('td'); td3.appendChild(sel);
+        var td3b = document.createElement('td'); td3b.appendChild(dynSel);
+        var td3c = document.createElement('td');
+        td3c.innerHTML = '<input class="form-input" type="number" name="fields[' + i + '][fieldLength]" placeholder="—" style="padding:6px 8px;font-size:12px;width:60px;" />';
         var td4 = document.createElement('td');
         td4.style.textAlign = 'center';
         td4.innerHTML = '<input type="checkbox" name="fields[' + i + '][visible]" value="1" checked style="width:16px;height:16px;accent-color:#8fb49a;" />';
         var td5 = document.createElement('td');
-        td5.innerHTML = '<input class="form-input" type="number" name="fields[' + i + '][sortOrder]" value="' + i + '" style="padding:6px 8px;font-size:12px;width:60px;" />';
+        td5.innerHTML = '<input class="form-input" type="number" name="fields[' + i + '][sortOrder]" value="' + i + '" style="padding:6px 8px;font-size:12px;width:50px;" />';
+        var td5b = document.createElement('td');
+        td5b.innerHTML = '<input class="form-input" type="text" name="fields[' + i + '][helpText]" placeholder="Help text..." style="padding:6px 8px;font-size:12px;" />';
 
         // Example cell — matches server-rendered rows
         var td6 = document.createElement('td');
@@ -845,7 +907,8 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         }
 
         tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
-        tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6);
+        tr.appendChild(td3b); tr.appendChild(td3c);
+        tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td5b); tr.appendChild(td6);
         tbody.appendChild(tr);
       }
     </script>

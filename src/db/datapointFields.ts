@@ -1,5 +1,5 @@
 import { getLocalDb } from './local';
-import { DatapointField, SfFieldType } from '../types';
+import { DatapointField, SfFieldType, SF_TO_DYNAMICS } from '../types';
 
 interface FieldRow {
   id: number;
@@ -7,6 +7,9 @@ interface FieldRow {
   field_name: string;
   display_name: string;
   sf_field_type: string;
+  dynamics_field_type: string;
+  field_length: number | null;
+  help_text: string;
   visible: number;
   sort_order: number;
   admin_edited: number;
@@ -20,6 +23,9 @@ function rowToField(row: FieldRow): DatapointField {
     fieldName: row.field_name,
     displayName: row.display_name,
     sfFieldType: row.sf_field_type as SfFieldType,
+    dynamicsFieldType: row.dynamics_field_type || SF_TO_DYNAMICS[row.sf_field_type] || '',
+    fieldLength: row.field_length ?? null,
+    helpText: row.help_text || '',
     visible: row.visible === 1,
     sortOrder: row.sort_order,
     adminEdited: row.admin_edited === 1,
@@ -78,6 +84,9 @@ export interface FieldConfigUpdate {
   fieldName: string;
   displayName: string;
   sfFieldType: SfFieldType;
+  dynamicsFieldType: string;
+  fieldLength: number | null;
+  helpText: string;
   visible: boolean;
   sortOrder: number;
   exampleValue?: string | null;
@@ -88,15 +97,18 @@ export function updateFieldConfig(datapointId: string, fields: FieldConfigUpdate
   const db = getLocalDb();
   const updateStmt = db.prepare(`
     UPDATE datapoint_fields
-    SET display_name = ?, sf_field_type = ?, visible = ?, sort_order = ?, example_value = ?, admin_edited = 1
+    SET display_name = ?, sf_field_type = ?, dynamics_field_type = ?,
+        field_length = ?, help_text = ?,
+        visible = ?, sort_order = ?, example_value = ?, admin_edited = 1
     WHERE datapoint_id = ? AND field_name = ?
   `);
 
   const updateMany = db.transaction((items: FieldConfigUpdate[]) => {
     for (const f of items) {
       updateStmt.run(
-        f.displayName, f.sfFieldType, f.visible ? 1 : 0,
-        f.sortOrder, f.exampleValue ?? null,
+        f.displayName, f.sfFieldType, f.dynamicsFieldType,
+        f.fieldLength ?? null, f.helpText,
+        f.visible ? 1 : 0, f.sortOrder, f.exampleValue ?? null,
         datapointId, f.fieldName
       );
     }
@@ -118,8 +130,10 @@ export function addField(
     'SELECT COALESCE(MAX(sort_order), -1) as max_order FROM datapoint_fields WHERE datapoint_id = ?'
   ).get(datapointId) as { max_order: number };
 
+  const dynamicsFieldType = SF_TO_DYNAMICS[sfFieldType] || '';
+
   db.prepare(`
-    INSERT INTO datapoint_fields (datapoint_id, field_name, display_name, sf_field_type, sort_order, admin_edited, example_value)
-    VALUES (?, ?, ?, ?, ?, 1, ?)
-  `).run(datapointId, fieldName, displayName, sfFieldType, maxOrder.max_order + 1, exampleValue ?? null);
+    INSERT INTO datapoint_fields (datapoint_id, field_name, display_name, sf_field_type, dynamics_field_type, sort_order, admin_edited, example_value)
+    VALUES (?, ?, ?, ?, ?, ?, 1, ?)
+  `).run(datapointId, fieldName, displayName, sfFieldType, dynamicsFieldType, maxOrder.max_order + 1, exampleValue ?? null);
 }
