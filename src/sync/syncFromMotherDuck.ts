@@ -3,7 +3,7 @@ import { fetchCatalogFields } from './fetchCatalogFields';
 import { groupRelatedFields } from './groupFields';
 import { transformToDatapoint, TransformedDatapoint, humanizeName, mapSfFieldType } from './transform';
 import { upsertFieldFromSync } from '../db/datapointFields';
-import { syncCleaningFields } from './syncCleaningFields';
+// syncCleaningFields is managed directly via /admin/cleaning-fields, not auto-synced
 
 export interface SyncResult {
   fieldsFetched: number;
@@ -198,9 +198,6 @@ export async function syncFromMotherDuck(): Promise<SyncResult> {
 
     result.datapointsUnchanged = existingRows.length - result.datapointsUpdated;
     if (result.datapointsUnchanged < 0) result.datapointsUnchanged = 0;
-
-    // Sync cleaning fields from MotherDuck
-    await syncCleaningFields();
 
     // Update sync log
     db.prepare(`

@@ -4,12 +4,13 @@ import { getSubmission, updateSubmission } from '../store';
 import { getAllSubmissionsWithMeta, getDatapointWithMeta, toggleVisibility } from '../db/datapoints';
 import { getFieldsForDatapoint, updateFieldConfig, addField as addFieldToDatapoint, FieldConfigUpdate } from '../db/datapointFields';
 import { getLocalDb } from '../db/local';
-import { getAllCleaningFields, getCleaningFieldsByIds } from '../db/cleaningFields';
+import { getAllCleaningFields, getCleaningFieldsByIds, getDistinctCleaningFields, updateCleaningField, deleteCleaningField, addCleaningField } from '../db/cleaningFields';
 import { queueView } from '../views/queueView';
 import { reviewView } from '../views/reviewView';
 import { newDatapointView } from '../views/newDatapointView';
 import { helptextView } from '../views/helptextView';
 import { fieldBuilderView, EnrichmentDatapoint } from '../views/fieldBuilderView';
+import { cleaningFieldsView } from '../views/cleaningFieldsView';
 import { getColumnHelptext, setColumnHelptext } from '../db/columnHelptext';
 import { sendRejectionNotification } from '../slack';
 import { Category, Label, Source, SfFieldType, DatapointField } from '../types';
@@ -393,6 +394,55 @@ router.post('/field-builder/export', (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send(csv);
+});
+
+// ─── Cleaning Fields Admin ──────────────────────────────────────────────────
+
+// GET /admin/cleaning-fields
+router.get('/cleaning-fields', (req: Request, res: Response) => {
+  const flash = req.query.msg as string | undefined;
+  res.send(cleaningFieldsView(getDistinctCleaningFields(), flash));
+});
+
+// POST /admin/cleaning-fields/add
+router.post('/cleaning-fields/add', (req: Request, res: Response) => {
+  const b = req.body as { fieldId?: string; label?: string; fieldName?: string; fieldType?: string; fieldLength?: string | null; category?: string; displayOrder?: string; helpText?: string };
+  if (!b.fieldId || !b.label || !b.fieldName) {
+    res.status(400).json({ error: 'fieldId, label and fieldName required' });
+    return;
+  }
+  addCleaningField({
+    fieldId: b.fieldId,
+    label: b.label,
+    fieldName: b.fieldName,
+    fieldType: b.fieldType || 'Text',
+    fieldLength: b.fieldLength ? parseInt(String(b.fieldLength), 10) || null : null,
+    category: (b.category as 'required' | 'recommended' | 'optional') || 'optional',
+    displayOrder: parseInt(String(b.displayOrder || '99'), 10),
+    helpText: b.helpText || '',
+  });
+  res.json({ ok: true });
+});
+
+// POST /admin/cleaning-fields/:fieldId/edit
+router.post('/cleaning-fields/:fieldId/edit', (req: Request, res: Response) => {
+  const b = req.body as { label?: string; fieldName?: string; fieldType?: string; fieldLength?: string | null; category?: string; displayOrder?: string; helpText?: string };
+  updateCleaningField(req.params.fieldId, {
+    label: b.label || '',
+    fieldName: b.fieldName || '',
+    fieldType: b.fieldType || 'Text',
+    fieldLength: b.fieldLength ? parseInt(String(b.fieldLength), 10) || null : null,
+    category: (b.category as 'required' | 'recommended' | 'optional') || 'optional',
+    displayOrder: parseInt(String(b.displayOrder || '0'), 10),
+    helpText: b.helpText || '',
+  });
+  res.json({ ok: true });
+});
+
+// POST /admin/cleaning-fields/:fieldId/delete
+router.post('/cleaning-fields/:fieldId/delete', (req: Request, res: Response) => {
+  deleteCleaningField(req.params.fieldId);
+  res.json({ ok: true });
 });
 
 export default router;
