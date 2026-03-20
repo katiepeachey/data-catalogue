@@ -13,6 +13,7 @@ declare module 'express-session' {
 }
 
 import { runMigrations } from './db/migrate';
+import { backfillFieldNames } from './db/backfillFieldNames';
 import { startSyncScheduler } from './sync/scheduler';
 import authRouter from './routes/auth';
 import adminRouter from './routes/admin';
@@ -21,6 +22,7 @@ import apiRouter from './routes/api';
 
 // Run DB migrations on startup
 runMigrations();
+backfillFieldNames();
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);

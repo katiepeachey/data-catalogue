@@ -256,6 +256,14 @@ router.post('/new', (req: Request, res: Response) => {
   const fieldDisplayNames: string[] = Array.isArray(ba.fieldDisplayName) ? ba.fieldDisplayName : (ba.fieldDisplayName ? [ba.fieldDisplayName] : []);
   const fieldSfTypes: string[] = Array.isArray(ba.fieldSfType) ? ba.fieldSfType : (ba.fieldSfType ? [ba.fieldSfType] : []);
   const fieldExamples: string[] = Array.isArray(ba.fieldExample) ? ba.fieldExample : (ba.fieldExample ? [ba.fieldExample] : []);
+  const fieldDynamicsTypes: string[] = Array.isArray(ba.fieldDynamicsType) ? ba.fieldDynamicsType : (ba.fieldDynamicsType ? [ba.fieldDynamicsType] : []);
+  const fieldLengths: string[] = Array.isArray(ba.fieldLength) ? ba.fieldLength : (ba.fieldLength ? [ba.fieldLength] : []);
+  const fieldHelpTexts: string[] = Array.isArray(ba.fieldHelpText) ? ba.fieldHelpText : (ba.fieldHelpText ? [ba.fieldHelpText] : []);
+  // fieldVisible uses per-field names (fieldVisible_0, fieldVisible_1, etc.) to avoid hidden+checkbox array doubling
+  const fieldSortOrders: string[] = Array.isArray(ba.fieldSortOrder) ? ba.fieldSortOrder : (ba.fieldSortOrder ? [ba.fieldSortOrder] : []);
+  const fieldPicklistValues: string[] = Array.isArray(ba.fieldPicklistValues) ? ba.fieldPicklistValues : (ba.fieldPicklistValues ? [ba.fieldPicklistValues] : []);
+
+  const fieldConfigUpdates: FieldConfigUpdate[] = [];
 
   for (let i = 0; i < fieldNames.length; i++) {
     const fn = (fieldNames[i] || '').trim();
@@ -264,6 +272,23 @@ router.post('/new', (req: Request, res: Response) => {
     const st = (fieldSfTypes[i] || 'Text') as SfFieldType;
     const exampleValue = (fieldExamples[i] || '').trim() || null;
     addFieldToDatapoint(id, fn, dn, st, exampleValue);
+
+    const dynamicsFieldType = (fieldDynamicsTypes[i] || '').trim();
+    const fieldLengthParsed = parseInt(fieldLengths[i] ?? '', 10);
+    const fieldLength = isNaN(fieldLengthParsed) ? null : fieldLengthParsed;
+    const helpText = (fieldHelpTexts[i] || '').trim();
+    const visible = ba[`fieldVisible_${i}`] === '1';
+    const sortOrderParsed = parseInt(fieldSortOrders[i] ?? '', 10);
+    const sortOrder = isNaN(sortOrderParsed) ? i : sortOrderParsed;
+
+    fieldConfigUpdates.push({
+      fieldName: fn, displayName: dn, sfFieldType: st,
+      dynamicsFieldType, fieldLength, helpText, visible, sortOrder, exampleValue,
+    });
+  }
+
+  if (fieldConfigUpdates.length > 0) {
+    updateFieldConfig(id, fieldConfigUpdates);
   }
 
   res.redirect('/admin/queue?msg=Datapoint+created+successfully');
@@ -319,6 +344,7 @@ router.post('/field-builder/export', (req: Request, res: Response) => {
   const isSalesforce = crmType === 'salesforce';
 
   function exportFieldName(fieldName: string): string {
+    if (fieldName.endsWith('__c')) return fieldName;
     return isSalesforce ? `${fieldName}__c` : fieldName;
   }
 

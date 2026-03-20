@@ -1,4 +1,5 @@
 import { runMigrations } from '../db/migrate';
+import { backfillFieldNames } from '../db/backfillFieldNames';
 import { syncFromMotherDuck } from './syncFromMotherDuck';
 import { close as closeMd } from '../db/motherduck';
 import { closeLocalDb } from '../db/local';
@@ -6,6 +7,7 @@ import { closeLocalDb } from '../db/local';
 async function main() {
   console.log('Running migrations...');
   runMigrations();
+  backfillFieldNames();
 
   console.log('Starting sync from MotherDuck...');
   const result = await syncFromMotherDuck();
