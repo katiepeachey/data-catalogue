@@ -870,6 +870,15 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         });
       });
 
+      function toKernelFieldName(displayName) {
+        var slug = displayName
+          .toLowerCase()
+          .replace(/[^a-z0-9\\s_]/g, '')
+          .replace(/[\\s_]+/g, '_')
+          .replace(/^_|_$/g, '');
+        return 'kernel_' + slug;
+      }
+
       // Field config: add new card
       var fieldRowCount = ${fields.length};
 
@@ -893,9 +902,13 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         var nameInp = document.createElement('input');
         nameInp.className = 'form-input';
         nameInp.type = 'text';
-        nameInp.placeholder = 'field_name';
-        nameInp.style.cssText = 'flex:1;max-width:260px;';
-        nameInp.addEventListener('input', function() { hiddenName.value = nameInp.value; });
+        nameInp.placeholder = 'kernel_field_name';
+        nameInp.style.cssText = 'flex:1;max-width:260px;font-family:SFMono-Regular,Consolas,Courier New,monospace;font-size:12px;';
+        nameInp.setAttribute('data-manual', '0');
+        nameInp.addEventListener('input', function() {
+          nameInp.setAttribute('data-manual', '1');
+          hiddenName.value = nameInp.value;
+        });
         var headerRight = document.createElement('div');
         headerRight.className = 'field-card-header-right';
         headerRight.innerHTML = '<label class="field-vis-label"><input type="checkbox" name="fields[' + i + '][visible]" value="1" checked style="accent-color:#343539;width:14px;height:14px;" /> Visible</label>'
@@ -909,7 +922,18 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         row1.className = 'field-card-row';
 
         var colDN = document.createElement('div'); colDN.className = 'field-card-col';
-        colDN.innerHTML = '<label class="field-card-label">Display Name</label><input class="form-input" type="text" name="fields[' + i + '][displayName]" placeholder="Display Name" />';
+        var dnLabel = document.createElement('label'); dnLabel.className = 'field-card-label'; dnLabel.textContent = 'Display Name';
+        var dnInput = document.createElement('input');
+        dnInput.className = 'form-input'; dnInput.type = 'text';
+        dnInput.name = 'fields[' + i + '][displayName]'; dnInput.placeholder = 'Display Name';
+        dnInput.addEventListener('input', function() {
+          if (nameInp.getAttribute('data-manual') === '0') {
+            var generated = toKernelFieldName(dnInput.value);
+            nameInp.value = generated;
+            hiddenName.value = generated;
+          }
+        });
+        colDN.appendChild(dnLabel); colDN.appendChild(dnInput);
 
         var colSF = document.createElement('div'); colSF.className = 'field-card-col';
         var sfLabel = document.createElement('label'); sfLabel.className = 'field-card-label'; sfLabel.textContent = 'SF Type';

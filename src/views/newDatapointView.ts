@@ -1,4 +1,4 @@
-import { Category, Label, SF_FIELD_TYPES } from '../types';
+import { Category, Label, SF_FIELD_TYPES, DYNAMICS_FIELD_TYPES, SF_TO_DYNAMICS } from '../types';
 import { layout, escapeHtml } from './layout';
 
 const ALL_LABELS: { value: Label; display: string }[] = [
@@ -34,8 +34,14 @@ export function newDatapointView(): string {
     </label>`
   ).join('\n');
 
-  // sfTypeOptions rendered server-side — avoids quote-nesting issues in JS
   const sfTypeOptions = SF_FIELD_TYPES.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  const dynTypeOptions = DYNAMICS_FIELD_TYPES.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+  const sfToDynJson = JSON.stringify(SF_TO_DYNAMICS);
+
+  const LENGTH_OPTIONS = ['', 18, 40, 80, 100, 255, 500, 1000, 4000, 5000, 32768];
+  const lengthOptionsHtml = LENGTH_OPTIONS.map((v) =>
+    `<option value="${v}">${v === '' ? '— none' : v}</option>`
+  ).join('');
 
   const body = `
     <div style="max-width:800px;">
@@ -117,20 +123,9 @@ export function newDatapointView(): string {
               Output Fields
               <span class="label-hint">Add fields this datapoint will produce</span>
             </label>
-            <div class="field-config-table-wrap">
-              <table class="field-config-table" id="fieldConfigTable">
-                <thead>
-                  <tr>
-                    <th style="width:22%;">Field Name</th>
-                    <th style="width:22%;">Display Name</th>
-                    <th style="width:18%;">SF Field Type</th>
-                    <th style="width:28%;">Example</th>
-                    <th style="width:10%;"></th>
-                  </tr>
-                </thead>
-                <tbody id="fieldTableBody"></tbody>
-              </table>
-              <button type="button" class="btn btn-outline btn-sm" style="margin:8px 10px;" onclick="addFieldRow()">
+            <div class="field-config-list-wrap">
+              <div class="field-config-list" id="fieldConfigList"></div>
+              <button type="button" class="btn btn-outline btn-sm" style="margin:12px 18px;" onclick="addFieldRow()">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;">
                   <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
@@ -187,14 +182,79 @@ export function newDatapointView(): string {
       .value-mode-toggle { display: flex; gap: 20px; margin-bottom: 4px; }
       .mode-radio { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #343539; cursor: pointer; }
       .mode-radio input { accent-color: #8fb49a; cursor: pointer; }
+
+      /* -- Field config cards (reused from review view) -- */
+      .field-config-list-wrap { display: flex; flex-direction: column; gap: 0; }
+      .field-config-list { display: flex; flex-direction: column; }
+
+      .field-card {
+        padding: 16px 18px;
+        border-bottom: 1px solid #eaebee;
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .field-card:last-child { border-bottom: none; }
+
+      .field-card-header {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      }
+      .field-card-header-right {
+        display: flex; align-items: center; gap: 16px; flex-shrink: 0;
+      }
+      .field-vis-label {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 13px; color: #555; cursor: pointer; user-select: none;
+      }
+      .field-order-wrap {
+        display: flex; align-items: center; gap: 6px;
+        font-size: 13px; color: #555;
+      }
+
+      .field-card-row {
+        display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap;
+      }
+      .field-card-col { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 5px; }
+      .field-card-col-sm { width: 90px; flex-shrink: 0; display: flex; flex-direction: column; gap: 5px; }
+      .field-card-label {
+        font-size: 11px; font-weight: 600; color: #6b7280;
+        letter-spacing: 0.04em; text-transform: uppercase;
+      }
+
+      .field-card-help-row {
+        display: flex; flex-direction: column; gap: 5px;
+      }
+      .field-card-picklist-row {
+        display: flex; flex-direction: column; gap: 5px;
+      }
+      .field-card-remove-row {
+        display: flex; justify-content: flex-end;
+      }
+
       @media (max-width: 860px) { .form-grid { grid-template-columns: 1fr; } }
     </style>
 
     <script>
       var fieldCount = 0;
       var sfOpts = '${sfTypeOptions}';
+      var dynOpts = '${dynTypeOptions}';
+      var lengthOpts = '${lengthOptionsHtml}';
+      var SF_TO_DYNAMICS_MAP = ${sfToDynJson};
+      var SF_DEFAULT_LENGTHS = {
+        'Text': 255, 'Text (Long)': 1000, 'Text Area (Long)': 5000,
+        'Long Text Area': 32768, 'URL': 255, 'Email': 254,
+        'Phone': 40, 'Picklist': 255, 'Multi-Select Picklist': 4099, 'Lookup': 18
+      };
+      var PICKLIST_TYPES = { 'Picklist': true, 'Multi-Select Picklist': true };
 
-      function removeFieldRow(btn) { btn.closest('tr').remove(); }
+      function toKernelFieldName(displayName) {
+        var slug = displayName
+          .toLowerCase()
+          .replace(/[^a-z0-9\\s_]/g, '')
+          .replace(/[\\s_]+/g, '_')
+          .replace(/^_|_$/g, '');
+        return 'kernel_' + slug;
+      }
+
+      function removeFieldCard(btn) { btn.closest('.field-card').remove(); }
       function removeOptionRow(btn) {
         btn.closest('tr').remove();
         syncFieldExamples();
@@ -224,7 +284,6 @@ export function newDatapointView(): string {
 
         var opts = getOptionNames();
         if (opts.length > 0) {
-          // Per-option mode: one input per classifier option
           var existingMap = {};
           try { if (existingVal) existingMap = JSON.parse(existingVal); } catch(e) {}
           var wrap = document.createElement('div');
@@ -250,7 +309,6 @@ export function newDatapointView(): string {
           cell.appendChild(wrap);
           rebuildFieldJson(cell);
         } else {
-          // Free text mode: single example input
           var inp = document.createElement('input');
           inp.className = 'form-input';
           inp.type = 'text';
@@ -264,42 +322,138 @@ export function newDatapointView(): string {
       }
 
       function syncFieldExamples() {
-        var rows = document.querySelectorAll('#fieldTableBody tr');
-        rows.forEach(function(tr) {
-          var cells = tr.querySelectorAll('td');
-          if (cells.length < 5) return;
-          var exCell = cells[3];
-          var hidden = exCell.querySelector('input[name="fieldExample[]"]');
+        var cards = document.querySelectorAll('.field-card');
+        cards.forEach(function(card) {
+          var exCol = card.querySelector('.field-example-col');
+          if (!exCol) return;
+          var hidden = exCol.querySelector('input[name="fieldExample[]"]');
           var oldVal = hidden ? hidden.value : '';
-          while (exCell.firstChild) exCell.removeChild(exCell.firstChild);
-          buildExampleCellInto(exCell, oldVal);
+          while (exCol.firstChild) exCol.removeChild(exCol.firstChild);
+          buildExampleCellInto(exCol, oldVal);
         });
       }
 
+      function autoMapDynamics(sfSelect, fieldIdx) {
+        var sfType = sfSelect.value;
+        var mapped = SF_TO_DYNAMICS_MAP[sfType] || '';
+        var dynSel = document.getElementById('dynType_' + fieldIdx);
+        if (dynSel && mapped) {
+          for (var j = 0; j < dynSel.options.length; j++) {
+            if (dynSel.options[j].value === mapped) { dynSel.value = mapped; break; }
+          }
+          if (dynSel.value !== mapped) {
+            var opt = document.createElement('option');
+            opt.value = mapped; opt.textContent = mapped;
+            dynSel.insertBefore(opt, dynSel.firstChild);
+            dynSel.value = mapped;
+          }
+        }
+        var lenSel = document.getElementById('fieldLen_' + fieldIdx);
+        if (lenSel) {
+          var defaultLen = SF_DEFAULT_LENGTHS[sfType];
+          lenSel.value = defaultLen !== undefined ? String(defaultLen) : '';
+        }
+        // Show/hide picklist values
+        var plRow = document.getElementById('picklistRow_' + fieldIdx);
+        if (plRow) {
+          plRow.style.display = PICKLIST_TYPES[sfType] ? '' : 'none';
+        }
+      }
+
       function addFieldRow() {
-        var tbody = document.getElementById('fieldTableBody');
-        var tr = document.createElement('tr');
+        var list = document.getElementById('fieldConfigList');
+        var i = fieldCount++;
 
+        var card = document.createElement('div');
+        card.className = 'field-card';
+
+        // Header: Field Name + Visible + Order
+        var header = document.createElement('div');
+        header.className = 'field-card-header';
+
+        var nameInp = document.createElement('input');
+        nameInp.className = 'form-input';
+        nameInp.type = 'text';
+        nameInp.name = 'fieldName[]';
+        nameInp.placeholder = 'kernel_field_name';
+        nameInp.setAttribute('data-manual', '0');
+        nameInp.style.cssText = 'flex:1;max-width:260px;font-family:SFMono-Regular,Consolas,Courier New,monospace;font-size:12px;';
+        nameInp.addEventListener('input', function() { nameInp.setAttribute('data-manual', '1'); });
+
+        var headerRight = document.createElement('div');
+        headerRight.className = 'field-card-header-right';
+        headerRight.innerHTML =
+          '<label class="field-vis-label"><input type="checkbox" name="fieldVisible_' + i + '" value="1" checked style="accent-color:#343539;width:14px;height:14px;" /> Visible</label>'
+          + '<div class="field-order-wrap"><span>Order</span><input class="form-input" type="number" name="fieldSortOrder[]" value="' + i + '" style="width:52px;" /></div>';
+
+        header.appendChild(nameInp);
+        header.appendChild(headerRight);
+        card.appendChild(header);
+
+        // Row 1: Display Name, SF Type, Dynamics Type, Length, Example
+        var row1 = document.createElement('div');
+        row1.className = 'field-card-row';
+
+        var colDN = document.createElement('div'); colDN.className = 'field-card-col';
+        var dnLabel = document.createElement('label'); dnLabel.className = 'field-card-label'; dnLabel.textContent = 'Display Name';
+        var dnInput = document.createElement('input');
+        dnInput.className = 'form-input'; dnInput.type = 'text';
+        dnInput.name = 'fieldDisplayName[]'; dnInput.placeholder = 'Display Name';
+        dnInput.addEventListener('input', function() {
+          if (nameInp.getAttribute('data-manual') === '0') {
+            nameInp.value = toKernelFieldName(dnInput.value);
+          }
+        });
+        colDN.appendChild(dnLabel); colDN.appendChild(dnInput);
+
+        var colSF = document.createElement('div'); colSF.className = 'field-card-col';
+        var sfLabel = document.createElement('label'); sfLabel.className = 'field-card-label'; sfLabel.textContent = 'SF Type';
         var sel = document.createElement('select');
-        sel.className = 'form-select';
-        sel.name = 'fieldSfType[]';
-        sel.style.cssText = 'padding:6px 8px;font-size:12px;';
+        sel.className = 'form-select'; sel.name = 'fieldSfType[]';
         sel.innerHTML = sfOpts;
+        sel.onchange = function() { autoMapDynamics(sel, i); };
+        colSF.appendChild(sfLabel); colSF.appendChild(sel);
 
-        var td1 = document.createElement('td');
-        td1.innerHTML = '<input class="form-input" type="text" name="fieldName[]" placeholder="field_name" style="padding:6px 8px;font-size:12px;" />';
-        var td2 = document.createElement('td');
-        td2.innerHTML = '<input class="form-input" type="text" name="fieldDisplayName[]" placeholder="Display Name" style="padding:6px 8px;font-size:12px;" />';
-        var td3 = document.createElement('td');
-        td3.appendChild(sel);
-        var td4 = document.createElement('td');
-        buildExampleCellInto(td4, '');
-        var td5 = document.createElement('td');
-        td5.style.textAlign = 'center';
-        td5.innerHTML = '<button type="button" class="btn btn-outline btn-sm" onclick="removeFieldRow(this)" style="padding:4px 8px;font-size:11px;color:#a03a3a;">Remove</button>';
-        tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4); tr.appendChild(td5);
-        tbody.appendChild(tr);
-        fieldCount++;
+        var colDyn = document.createElement('div'); colDyn.className = 'field-card-col';
+        var dynLabel = document.createElement('label'); dynLabel.className = 'field-card-label'; dynLabel.textContent = 'Dynamics Type';
+        var dynSel = document.createElement('select');
+        dynSel.className = 'form-select'; dynSel.name = 'fieldDynamicsType[]'; dynSel.id = 'dynType_' + i;
+        dynSel.innerHTML = dynOpts;
+        colDyn.appendChild(dynLabel); colDyn.appendChild(dynSel);
+
+        var colLen = document.createElement('div'); colLen.className = 'field-card-col-sm';
+        colLen.innerHTML = '<label class="field-card-label">Length</label><select class="form-select" id="fieldLen_' + i + '" name="fieldLength[]">' + lengthOpts + '</select>';
+
+        var colEx = document.createElement('div'); colEx.className = 'field-card-col field-example-col';
+        var exLabel = document.createElement('label'); exLabel.className = 'field-card-label'; exLabel.textContent = 'Example';
+        colEx.appendChild(exLabel);
+        buildExampleCellInto(colEx, '');
+
+        row1.appendChild(colDN); row1.appendChild(colSF); row1.appendChild(colDyn);
+        row1.appendChild(colLen); row1.appendChild(colEx);
+        card.appendChild(row1);
+
+        // Help text row
+        var helpRow = document.createElement('div');
+        helpRow.className = 'field-card-help-row';
+        helpRow.innerHTML = '<label class="field-card-label">Help Text</label><input class="form-input" type="text" name="fieldHelpText[]" placeholder="e.g. Reference to parent account record" />';
+        card.appendChild(helpRow);
+
+        // Picklist values row (hidden by default)
+        var plRow = document.createElement('div');
+        plRow.className = 'field-card-picklist-row';
+        plRow.id = 'picklistRow_' + i;
+        plRow.style.display = 'none';
+        plRow.innerHTML = '<label class="field-card-label">Picklist Values <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;">(semicolon-separated)</span></label><input class="form-input" type="text" name="fieldPicklistValues[]" placeholder="e.g. Option A; Option B; Option C" />';
+        card.appendChild(plRow);
+
+        // Remove button row
+        var removeRow = document.createElement('div');
+        removeRow.className = 'field-card-remove-row';
+        removeRow.innerHTML = '<button type="button" class="btn btn-outline btn-sm" onclick="removeFieldCard(this)" style="padding:4px 12px;font-size:11px;color:#a03a3a;">Remove</button>';
+        card.appendChild(removeRow);
+
+        list.appendChild(card);
       }
 
       function addOptionRow() {
