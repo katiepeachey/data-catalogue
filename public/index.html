@@ -62,10 +62,6 @@
     .filter-select { padding: 9px 14px; border: 1px solid #eaebee; border-radius: 8px; font-size: 13px; background: #fff; color: #343539; outline: none; cursor: pointer; }
     .filter-select:focus { border-color: #b5c4b6; }
 
-    .stats-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-    .stat-pill { background: #fff; border: 1px solid #eaebee; border-radius: 20px; padding: 6px 16px; font-size: 13px; font-weight: 500; color: #343539; display: flex; align-items: center; gap: 8px; }
-    .stat-pill .count { background: #e2ede3; color: #343539; border-radius: 10px; padding: 1px 8px; font-size: 12px; font-weight: 700; }
-
     /* -- Card / Table -- */
     .card { background: #fff; border-radius: 12px; border: 1px solid #eaebee; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
     .table-scroll { overflow-x: auto; overflow-y: auto; max-height: calc(100vh - 220px); }
@@ -88,18 +84,17 @@
     tr.data-row:hover td { background: #fafcfa; }
 
     .dp-name { font-weight: 600; color: #343539; font-size: 13px; }
-    .dp-desc { font-size: 12.5px; color: #666; line-height: 1.55; }
+    .dp-desc { font-size: 12px; color: #999; line-height: 1.55; }
 
     /* -- Sub-label chips -- */
-    .sub-labels { display: block; }
+    .sub-labels { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
     .sub-label {
-      display: inline-flex; align-items: center;
+      display: table;
       font-size: 10px; font-weight: 700;
       letter-spacing: 0.04em; text-transform: uppercase;
       border-radius: 4px; padding: 3px 8px;
-      white-space: nowrap; line-height: 1.4;
+      white-space: normal; line-height: 1.4;
       cursor: pointer; transition: opacity 0.15s;
-      margin: 0 4px 4px 0;
     }
     .sub-label:hover { opacity: 0.75; }
 
@@ -129,18 +124,18 @@
     /* -- Possible values chips -- */
     .value-chip {
       display: inline-flex; font-size: 10px; font-weight: 600;
-      background: #f0f2f0; color: #555; border: 1px solid #e0e4e0;
+      background: #f0f2f0; color: #999; border: 1px solid #eaebee;
       border-radius: 10px; padding: 2px 8px; white-space: nowrap;
     }
     .value-chip-hidden { display: none; }
     .value-chip.overflow { background: #eef2fc; color: #3a5fa0; border-color: #b8c8ef; cursor: pointer; transition: opacity 0.15s; }
     .value-chip.overflow:hover { opacity: 0.75; }
     .values-cell { display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-start; }
-    .data-type-label { font-size: 11px; color: #aaa; font-style: italic; }
+    .data-type-label { font-size: 11px; color: #a1a1a2; font-style: italic; }
 
     /* -- Source badges -- */
-    .source-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; border-radius: 6px; padding: 3px 9px; white-space: nowrap; }
-    .source-kernel   { background: #f0f6f1; color: #555; border: 1px solid #c8d5c9; font-size: 11px; font-weight: 500; padding: 3px 8px; }
+    .source-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; border-radius: 8px; padding: 3px 9px; white-space: nowrap; }
+    .source-kernel   { background: #f0f6f1; color: #666; border: 1px solid #c8d5c9; font-weight: 500; padding: 3px 8px; }
     .source-linkedin { background: #eaf2fc; color: #0a66c2; border: 1px solid #b3d0ef; }
     .source-badge svg { width: 11px; height: 11px; flex-shrink: 0; }
 
@@ -152,9 +147,9 @@
       display: inline-flex; align-items: center;
       font-size: 11px; font-weight: 600;
       border-radius: 20px; padding: 4px 12px;
-      cursor: pointer; border: 1.5px solid #e0e4e0;
+      cursor: pointer; border: 1px solid #eaebee;
       transition: all 0.15s; white-space: nowrap;
-      background: #f0f2f0; color: #555;
+      background: #f0f2f0; color: #666;
     }
     .option-chip:hover { opacity: 0.8; }
     .option-chip.active { color: #fff; }
@@ -162,16 +157,15 @@
     .fex-list { display: flex; flex-direction: column; gap: 0; }
     .fex-item { min-height: 22px; display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f2f0; }
     .fex-empty { min-height: 22px; }
-    .fex-val { font-size: 12px; color: #555; font-style: italic; line-height: 1.4; }
+    .fex-val { font-size: 12px; color: #999; font-style: italic; line-height: 1.4; }
     .fex-reasoning .per-opt-ex {
-      font-size: 12px; color: #555; font-style: italic;
+      font-size: 12px; color: #999; font-style: italic;
       line-height: 1.4; white-space: normal; word-break: break-word;
     }
-    .values-cell { display: flex; flex-wrap: wrap; gap: 4px; }
 
     /* -- Per-field inline examples -- */
     .field-example {
-      display: inline; font-size: 11.5px; color: #888;
+      display: inline; font-size: 11px; color: #999;
       font-style: italic; margin-left: 4px;
     }
 
@@ -233,9 +227,8 @@
     }
 
     /* -- Field name styles (plain text) -- */
-    .fields-list li { align-items: center; }
     .field-name { font-size: 13px; color: #343539; }
-    .field-name-sub { font-size: 12px; color: #aaa; padding-left: 4px; }
+    .field-name-sub { font-size: 12px; color: #a1a1a2; padding-left: 4px; }
 
     /* -- SF type tip: only visible on row hover -- */
     tr.data-row .sf-type-tip { display: none; }
@@ -245,7 +238,7 @@
     .val-dropdown { position: relative; display: inline-block; }
     .val-dropdown-btn {
       display: inline-flex; align-items: center; gap: 5px;
-      border: 1px solid #dde3dd; border-radius: 6px;
+      border: 1px solid #eaebee; border-radius: 8px;
       padding: 3px 8px 3px 10px; font-size: 12px; color: #343539;
       background: #fff; cursor: pointer; white-space: nowrap; user-select: none;
     }
