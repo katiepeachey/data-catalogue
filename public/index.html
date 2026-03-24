@@ -76,15 +76,15 @@
     .cat-row-inner { padding: 12px 16px; background: #f7faf7; }
     .cat-label { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #2d7a4f; }
     .cat-dot { width: 8px; height: 8px; border-radius: 50%; opacity: 0.8; flex-shrink: 0; }
-    .cat-count { border-radius: 8px; padding: 1px 7px; font-size: 11px; font-weight: 700; }
+    .cat-count { border-radius: 8px; padding: 1px 7px; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
     /* -- Data rows -- */
     tr.data-row td { padding: 14px 16px; vertical-align: top; border-bottom: 1px solid #f0f2f0; font-size: 13px; line-height: 1.5; }
     tr.data-row:last-child td { border-bottom: none; }
     tr.data-row:hover td { background: #fafcfa; }
 
-    .dp-name { font-weight: 600; color: #343539; font-size: 13px; }
-    .dp-desc { font-size: 12px; color: #999; line-height: 1.55; }
+    .dp-name { font-weight: 600; color: #343539; font-size: 13px; line-height: 1.4; }
+    .dp-desc { font-size: 13px; color: #999; line-height: 1.55; }
 
     /* -- Sub-label chips -- */
     .sub-labels { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
@@ -162,7 +162,7 @@
       display: inline-flex; align-items: center; justify-content: center;
       width: 14px; height: 14px; border-radius: 50%;
       border: 1.5px solid #c8d5c9; color: #8fb49a;
-      font-size: 9px; font-weight: 700; font-style: normal;
+      font-size: 10px; font-weight: 700; font-style: normal;
       line-height: 1;
       cursor: default; position: relative; margin-left: 4px;
       vertical-align: middle; user-select: none; flex-shrink: 0;
@@ -174,7 +174,7 @@
       align-items: center; justify-content: center;
       width: 13px; height: 13px; border-radius: 50%;
       border: 1.5px solid #ccc; color: #aaa;
-      font-size: 8px; font-weight: 700; font-style: normal;
+      font-size: 10px; font-weight: 700; font-style: normal;
       text-transform: none; line-height: 1;
       cursor: default; position: relative;
       margin-left: 4px; vertical-align: middle;
@@ -215,7 +215,7 @@
     }
 
     /* -- Field name styles (plain text) -- */
-    .field-name { font-size: 13px; color: #343539; }
+    .field-name { font-size: 13px; color: #343539; font-weight: 500; }
     .field-name-sub { font-size: 12px; color: #a1a1a2; padding-left: 4px; }
 
     /* -- SF type tip: only visible on row hover -- */
