@@ -3,6 +3,7 @@ import { fetchCatalogFields } from './fetchCatalogFields';
 import { groupRelatedFields } from './groupFields';
 import { transformToDatapoint, TransformedDatapoint, humanizeName, mapSfFieldType } from './transform';
 import { upsertFieldFromSync } from '../db/datapointFields';
+// syncCleaningFields is managed directly via /admin/cleaning-fields, not auto-synced
 
 export interface SyncResult {
   fieldsFetched: number;

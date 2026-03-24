@@ -4,10 +4,13 @@ import { getSubmission, updateSubmission } from '../store';
 import { getAllSubmissionsWithMeta, getDatapointWithMeta, toggleVisibility } from '../db/datapoints';
 import { getFieldsForDatapoint, updateFieldConfig, addField as addFieldToDatapoint, FieldConfigUpdate } from '../db/datapointFields';
 import { getLocalDb } from '../db/local';
+import { getAllCleaningFields, getCleaningFieldsByIds, getDistinctCleaningFields, updateCleaningField, deleteCleaningField, addCleaningField } from '../db/cleaningFields';
 import { queueView } from '../views/queueView';
 import { reviewView } from '../views/reviewView';
 import { newDatapointView } from '../views/newDatapointView';
 import { helptextView } from '../views/helptextView';
+import { fieldBuilderView, EnrichmentDatapoint } from '../views/fieldBuilderView';
+import { cleaningFieldsView } from '../views/cleaningFieldsView';
 import { getColumnHelptext, setColumnHelptext } from '../db/columnHelptext';
 import { sendRejectionNotification } from '../slack';
 import { Category, Label, Source, SfFieldType, DatapointField } from '../types';
@@ -82,8 +85,12 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       fieldName?: string;
       displayName?: string;
       sfFieldType?: string;
+      dynamicsFieldType?: string;
+      fieldLength?: string;
+      helpText?: string;
       visible?: string;
       sortOrder?: string;
+      exampleValue?: string;
       isSubField?: string;
     }>) || [];
 
@@ -97,18 +104,22 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       const fieldName = rf.fieldName;
       const displayName = rf.displayName || fieldName;
       const sfFieldType = (rf.sfFieldType as SfFieldType) || 'Text';
+      const dynamicsFieldType = rf.dynamicsFieldType || '';
+      const fieldLengthParsed = parseInt(rf.fieldLength ?? '', 10);
+      const fieldLength = isNaN(fieldLengthParsed) ? null : fieldLengthParsed;
+      const helpText = rf.helpText || '';
       const visible = rf.visible === '1';
       const sortOrderParsed = parseInt(rf.sortOrder ?? '', 10);
       const sortOrder = isNaN(sortOrderParsed) ? fi : sortOrderParsed;
-      const exampleValue = (rf as any).exampleValue || null;
+      const exampleValue = rf.exampleValue || null;
       const isSubField = rf.isSubField === '1';
 
       if (existingFieldNames.has(fieldName)) {
-        fieldUpdates.push({ fieldName, displayName, sfFieldType, visible, sortOrder, exampleValue, isSubField });
+        fieldUpdates.push({ fieldName, displayName, sfFieldType, dynamicsFieldType, fieldLength, helpText, visible, sortOrder, exampleValue, isSubField });
       } else {
         // New field added manually via "Add Field" button
         addFieldToDatapoint(submission.id, fieldName, displayName, sfFieldType, exampleValue);
-        updateFieldConfig(submission.id, [{ fieldName, displayName, sfFieldType, visible, sortOrder, exampleValue, isSubField }]);
+        updateFieldConfig(submission.id, [{ fieldName, displayName, sfFieldType, dynamicsFieldType, fieldLength, helpText, visible, sortOrder, exampleValue, isSubField }]);
       }
     }
 
@@ -271,6 +282,182 @@ router.post('/new', (req: Request, res: Response) => {
 
   const msg = isApprove ? 'Datapoint+approved+and+published' : 'Datapoint+created+successfully';
   res.redirect(`/admin/queue?msg=${msg}`);
+});
+
+// ─── Field Builder ─────────────────────────────────────────────────────────
+
+function getEnrichmentDatapoints(): EnrichmentDatapoint[] {
+  const db = getLocalDb();
+  const rows = db.prepare(
+    `SELECT id, name, category FROM datapoints
+     WHERE status = 'approved' AND visible = 1
+     ORDER BY category ASC, name ASC`
+  ).all() as { id: string; name: string; category: string }[];
+
+  return rows.map((dp) => {
+    const fields = getFieldsForDatapoint(dp.id)
+      .filter((f: DatapointField) => f.visible)
+      .map((f: DatapointField) => ({
+        fieldName: f.fieldName,
+        displayName: f.displayName,
+        sfFieldType: f.sfFieldType,
+        dynamicsFieldType: f.dynamicsFieldType,
+        fieldLength: f.fieldLength,
+        helpText: f.helpText,
+      }));
+    return { id: dp.id, name: dp.name, category: dp.category, fields };
+  });
+}
+
+// GET /admin/field-builder
+router.get('/field-builder', (_req: Request, res: Response) => {
+  const fieldsByCrm = getAllCleaningFields();
+  const datapoints = getEnrichmentDatapoints();
+  res.send(fieldBuilderView(fieldsByCrm, datapoints));
+});
+
+// POST /admin/field-builder/export
+router.post('/field-builder/export', (req: Request, res: Response) => {
+  const body = req.body as Record<string, string | string[]>;
+  const crmType = (body.crm_type as string) || 'salesforce';
+
+  const rawCleaning = body.selected_cleaning;
+  const selectedCleaningIds: string[] = Array.isArray(rawCleaning)
+    ? rawCleaning
+    : rawCleaning ? [rawCleaning] : [];
+
+  const rawEnrichment = body.selected_enrichment;
+  const selectedEnrichmentIds: string[] = Array.isArray(rawEnrichment)
+    ? rawEnrichment
+    : rawEnrichment ? [rawEnrichment] : [];
+
+  const isSalesforce = crmType === 'salesforce';
+
+  function exportFieldName(fieldName: string): string {
+    return isSalesforce ? `${fieldName}__c` : fieldName;
+  }
+
+  function enrichmentFieldType(field: { sfFieldType: string; dynamicsFieldType: string }): string {
+    if (isSalesforce) return field.sfFieldType;
+    return field.dynamicsFieldType || field.sfFieldType;
+  }
+
+  // Build CSV rows
+  const csvRows: string[][] = [];
+
+  // Header
+  csvRows.push(['Module', 'Label', 'Field Name', 'SF Field Type', 'Length', 'Help Text', 'Priority']);
+
+  // Cleaning fields — ordered required → recommended → optional
+  if (selectedCleaningIds.length > 0) {
+    const cleaningFields = getCleaningFieldsByIds(selectedCleaningIds)
+      .filter((f) => f.crmType === crmType);
+
+    const order = ['required', 'recommended', 'optional'];
+    cleaningFields.sort((a, b) => {
+      const ai = order.indexOf(a.category);
+      const bi = order.indexOf(b.category);
+      if (ai !== bi) return ai - bi;
+      return a.displayOrder - b.displayOrder;
+    });
+
+    for (const f of cleaningFields) {
+      csvRows.push([
+        'CRM Cleaning',
+        f.label,
+        exportFieldName(f.fieldName),
+        f.fieldType,
+        f.fieldLength != null ? String(f.fieldLength) : '',
+        f.helpText,
+        f.category.charAt(0).toUpperCase() + f.category.slice(1),
+      ]);
+    }
+  }
+
+  // Enrichment fields
+  if (selectedEnrichmentIds.length > 0) {
+    const allDatapoints = getEnrichmentDatapoints();
+    const selectedDps = allDatapoints.filter((dp) => selectedEnrichmentIds.includes(dp.id));
+
+    for (const dp of selectedDps) {
+      for (const field of dp.fields) {
+        csvRows.push([
+          'Enrichment',
+          field.displayName,
+          exportFieldName(field.fieldName),
+          enrichmentFieldType(field),
+          field.fieldLength != null ? String(field.fieldLength) : '',
+          field.helpText,
+          'Recommended',
+        ]);
+      }
+    }
+  }
+
+  // Escape CSV cell
+  function csvCell(val: string): string {
+    if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+      return `"${val.replace(/"/g, '""')}"`;
+    }
+    return val;
+  }
+
+  const csv = csvRows.map((row) => row.map(csvCell).join(',')).join('\r\n');
+  const today = new Date().toISOString().slice(0, 10);
+  const filename = `kernel_field_set_${crmType}_${today}.csv`;
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(csv);
+});
+
+// ─── Cleaning Fields Admin ──────────────────────────────────────────────────
+
+// GET /admin/cleaning-fields
+router.get('/cleaning-fields', (req: Request, res: Response) => {
+  const flash = req.query.msg as string | undefined;
+  res.send(cleaningFieldsView(getDistinctCleaningFields(), flash));
+});
+
+// POST /admin/cleaning-fields/add
+router.post('/cleaning-fields/add', (req: Request, res: Response) => {
+  const b = req.body as { fieldId?: string; label?: string; fieldName?: string; fieldType?: string; fieldLength?: string | null; category?: string; displayOrder?: string; helpText?: string };
+  if (!b.fieldId || !b.label || !b.fieldName) {
+    res.status(400).json({ error: 'fieldId, label and fieldName required' });
+    return;
+  }
+  addCleaningField({
+    fieldId: b.fieldId,
+    label: b.label,
+    fieldName: b.fieldName,
+    fieldType: b.fieldType || 'Text',
+    fieldLength: b.fieldLength ? parseInt(String(b.fieldLength), 10) || null : null,
+    category: (b.category as 'required' | 'recommended' | 'optional') || 'optional',
+    displayOrder: parseInt(String(b.displayOrder || '99'), 10),
+    helpText: b.helpText || '',
+  });
+  res.json({ ok: true });
+});
+
+// POST /admin/cleaning-fields/:fieldId/edit
+router.post('/cleaning-fields/:fieldId/edit', (req: Request, res: Response) => {
+  const b = req.body as { label?: string; fieldName?: string; fieldType?: string; fieldLength?: string | null; category?: string; displayOrder?: string; helpText?: string };
+  updateCleaningField(req.params.fieldId, {
+    label: b.label || '',
+    fieldName: b.fieldName || '',
+    fieldType: b.fieldType || 'Text',
+    fieldLength: b.fieldLength ? parseInt(String(b.fieldLength), 10) || null : null,
+    category: (b.category as 'required' | 'recommended' | 'optional') || 'optional',
+    displayOrder: parseInt(String(b.displayOrder || '0'), 10),
+    helpText: b.helpText || '',
+  });
+  res.json({ ok: true });
+});
+
+// POST /admin/cleaning-fields/:fieldId/delete
+router.post('/cleaning-fields/:fieldId/delete', (req: Request, res: Response) => {
+  deleteCleaningField(req.params.fieldId);
+  res.json({ ok: true });
 });
 
 export default router;
