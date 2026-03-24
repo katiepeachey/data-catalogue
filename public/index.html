@@ -127,7 +127,6 @@
       background: #f0f2f0; color: #999; border: 1px solid #eaebee;
       border-radius: 10px; padding: 2px 8px; white-space: nowrap;
     }
-    .value-chip-hidden { display: none; }
     .value-chip.overflow { background: #eef2fc; color: #3a5fa0; border-color: #b8c8ef; cursor: pointer; transition: opacity 0.15s; }
     .value-chip.overflow:hover { opacity: 0.75; }
     .values-cell { display: flex; flex-wrap: wrap; gap: 4px; align-items: flex-start; }
@@ -142,17 +141,6 @@
     .date-cell { font-size: 12px; color: #aaa; white-space: nowrap; }
     .empty-state { text-align: center; padding: 60px 20px; color: #bbb; font-size: 14px; display: none; }
 
-    /* -- Option chips (inline in table) -- */
-    .option-chip {
-      display: inline-flex; align-items: center;
-      font-size: 11px; font-weight: 600;
-      border-radius: 20px; padding: 4px 12px;
-      cursor: pointer; border: 1px solid #eaebee;
-      transition: all 0.15s; white-space: nowrap;
-      background: #f0f2f0; color: #666;
-    }
-    .option-chip:hover { opacity: 0.8; }
-    .option-chip.active { color: #fff; }
     /* -- Options/Values column per-field list -- */
     .fex-list { display: flex; flex-direction: column; gap: 0; }
     .fex-item { min-height: 22px; display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f2f0; }
@@ -271,6 +259,10 @@
 
     /* -- Source plain text -- */
     .source-plain { font-size: 12px; color: #666; }
+
+    /* -- Empty / fallback cell states -- */
+    .cell-empty { color: #ccc; font-size: 12px; }
+    .cell-value  { font-size: 12px; color: #343539; }
   </style>
 </head>
 <body>
@@ -553,14 +545,14 @@ function renderTable() {
             '<span class="less-label">↑ Less</span></li>'
           : '';
         return '<ul class="fields-list">' + items + expandBtn + '</ul>';
-      })() : '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
+      })() : '<span class="cell-empty">&mdash;</span>';
 
       // Value column
       var CHIP_ACTIVE_COLOR = '#8fb49a';
       var optionsHtml = (function() {
         if (dpFields.length === 0) {
-          if (dp.exampleValue) return '<span style="font-size:12px;color:#343539;">' + escapeHtml(dp.exampleValue) + '</span>';
-          return '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
+          if (dp.exampleValue) return '<span class="cell-value">' + escapeHtml(dp.exampleValue) + '</span>';
+          return '<span class="cell-empty">&mdash;</span>';
         }
 
         if (chipOpts.length > 0) {
@@ -644,39 +636,6 @@ function renderTable() {
   document.getElementById('emptyState').style.display = totalVisible === 0 ? 'block' : 'none';
 }
 
-function selectChip(chipEl, rowId) {
-  var opt = chipEl.getAttribute('data-opt');
-  var chipsEl = document.getElementById('chips_' + rowId);
-  if (!chipsEl) return;
-
-  // Update chip styles
-  var chips = chipsEl.querySelectorAll('.option-chip');
-  chips.forEach(function(c) {
-    var colour = c.getAttribute('data-colour') || '#8fb49a';
-    if (c.getAttribute('data-opt') === opt) {
-      c.classList.add('active');
-      c.style.background = colour;
-      c.style.borderColor = colour;
-      c.style.color = '#fff';
-    } else {
-      c.classList.remove('active');
-      c.style.background = '#f0f2f0';
-      c.style.borderColor = '#e0e4e0';
-      c.style.color = '#555';
-    }
-  });
-
-  // Update per-option inline examples in the same row
-  var row = document.getElementById(rowId);
-  if (!row) return;
-  var perOptEls = row.querySelectorAll('.per-opt-ex');
-  perOptEls.forEach(function(el) {
-    try {
-      var map = JSON.parse(el.getAttribute('data-exmap') || '{}');
-      el.textContent = map[opt] || '';
-    } catch(e) {}
-  });
-}
 
 function toggleExpandRow(rowId) {
   var tr = document.getElementById(rowId);
