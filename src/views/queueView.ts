@@ -84,7 +84,11 @@ export function queueView(submissions: SubmissionWithMeta[], flashMsg?: string):
             </label>`
           : `<span style="color:#ccc;font-size:11px;">&mdash;</span>`;
 
-        return `<tr class="data-row">
+        return `<tr class="data-row"
+          data-name="${escapeHtml(s.name.toLowerCase())}"
+          data-category="${escapeHtml(s.category)}"
+          data-labels="${escapeHtml(s.labels.join(','))}"
+          data-status="${s.status}">
           <td>
             <div class="dp-name">${escapeHtml(s.name)}</div>
             <div class="dp-cat">${escapeHtml(s.category)}</div>
@@ -146,6 +150,48 @@ export function queueView(submissions: SubmissionWithMeta[], flashMsg?: string):
       <div class="stat-pill">Total <span class="count">${submissions.length}</span></div>
     </div>
 
+    <div class="queue-filters">
+      <div class="search-wrap" style="position:relative;flex:1;min-width:180px;max-width:280px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:#aaa;pointer-events:none;">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input id="qSearch" type="text" placeholder="Search datapoints…"
+          oninput="filterQueue()"
+          style="width:100%;padding:8px 10px 8px 32px;border:1px solid #eaeeea;border-radius:8px;font-size:13px;outline:none;" />
+      </div>
+      <select id="qCategory" onchange="filterQueue()" style="padding:8px 12px;border:1px solid #eaeeea;border-radius:8px;font-size:13px;background:#fff;outline:none;cursor:pointer;">
+        <option value="">All Categories</option>
+        <option value="Entity Data">Entity Data</option>
+        <option value="Firmographics">Firmographics</option>
+        <option value="Technographics">Technographics</option>
+        <option value="People Metrics">People Metrics</option>
+        <option value="Hiring Signals">Hiring Signals</option>
+        <option value="Custom Enrichment">Custom Enrichment</option>
+      </select>
+      <select id="qLabel" onchange="filterQueue()" style="padding:8px 12px;border:1px solid #eaeeea;border-radius:8px;font-size:13px;background:#fff;outline:none;cursor:pointer;">
+        <option value="">All Labels</option>
+        <option value="company-identity">Entity Identity</option>
+        <option value="location-geography">Location &amp; Geography</option>
+        <option value="corporate-structure">Corporate Structure</option>
+        <option value="financial-profile">Financial Profile</option>
+        <option value="technology-infrastructure">Technology &amp; Infrastructure</option>
+        <option value="sales-marketing">Sales &amp; Marketing</option>
+        <option value="workforce-people">Workforce &amp; People</option>
+        <option value="hiring-talent">Hiring &amp; Talent</option>
+        <option value="customer-support">Customer Support</option>
+        <option value="compliance-risk">Compliance &amp; Risk</option>
+        <option value="ecommerce-retail">E-commerce &amp; Retail</option>
+        <option value="operations">Operations</option>
+        <option value="industry-market">Industry &amp; Market</option>
+      </select>
+      <select id="qStatus" onchange="filterQueue()" style="padding:8px 12px;border:1px solid #eaeeea;border-radius:8px;font-size:13px;background:#fff;outline:none;cursor:pointer;">
+        <option value="">All Statuses</option>
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+
     <div class="card">
       <div class="table-scroll">
         <table>
@@ -177,6 +223,7 @@ export function queueView(submissions: SubmissionWithMeta[], flashMsg?: string):
     </div>
 
     <style>
+      .queue-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
       .table-scroll { overflow-x: auto; }
       table { width: 100%; border-collapse: collapse; }
       thead th {
@@ -226,6 +273,26 @@ export function queueView(submissions: SubmissionWithMeta[], flashMsg?: string):
     </style>
 
     <script>
+      function filterQueue() {
+        var q = document.getElementById('qSearch').value.toLowerCase().trim();
+        var cat = document.getElementById('qCategory').value;
+        var label = document.getElementById('qLabel').value;
+        var status = document.getElementById('qStatus').value;
+        var rows = document.querySelectorAll('tr.data-row');
+        rows.forEach(function(row) {
+          var name = row.getAttribute('data-name') || '';
+          var rowCat = row.getAttribute('data-category') || '';
+          var rowLabels = row.getAttribute('data-labels') || '';
+          var rowStatus = row.getAttribute('data-status') || '';
+          var show = true;
+          if (q && name.indexOf(q) === -1) show = false;
+          if (cat && rowCat !== cat) show = false;
+          if (label && rowLabels.split(',').indexOf(label) === -1) show = false;
+          if (status && rowStatus !== status) show = false;
+          row.style.display = show ? '' : 'none';
+        });
+      }
+
       function toggleVis(id, visible) {
         fetch('/admin/datapoints/' + id + '/visibility', {
           method: 'POST',

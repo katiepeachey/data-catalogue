@@ -63,4 +63,5 @@ export interface DatapointField {
   sortOrder: number;
   adminEdited: boolean;
   exampleValue?: string | null;
+  isSubField: boolean;
 }

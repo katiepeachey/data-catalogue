@@ -1,0 +1,1 @@
+ALTER TABLE datapoint_fields ADD COLUMN is_sub_field INTEGER NOT NULL DEFAULT 0;

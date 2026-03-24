@@ -11,6 +11,7 @@ interface FieldRow {
   sort_order: number;
   admin_edited: number;
   example_value: string | null;
+  is_sub_field: number;
 }
 
 function rowToField(row: FieldRow): DatapointField {
@@ -24,6 +25,7 @@ function rowToField(row: FieldRow): DatapointField {
     sortOrder: row.sort_order,
     adminEdited: row.admin_edited === 1,
     exampleValue: row.example_value || null,
+    isSubField: row.is_sub_field === 1,
   };
 }
 
@@ -81,6 +83,7 @@ export interface FieldConfigUpdate {
   visible: boolean;
   sortOrder: number;
   exampleValue?: string | null;
+  isSubField?: boolean;
 }
 
 /** Bulk update field configuration from admin UI */
@@ -88,7 +91,7 @@ export function updateFieldConfig(datapointId: string, fields: FieldConfigUpdate
   const db = getLocalDb();
   const updateStmt = db.prepare(`
     UPDATE datapoint_fields
-    SET display_name = ?, sf_field_type = ?, visible = ?, sort_order = ?, example_value = ?, admin_edited = 1
+    SET display_name = ?, sf_field_type = ?, visible = ?, sort_order = ?, example_value = ?, is_sub_field = ?, admin_edited = 1
     WHERE datapoint_id = ? AND field_name = ?
   `);
 
@@ -96,7 +99,7 @@ export function updateFieldConfig(datapointId: string, fields: FieldConfigUpdate
     for (const f of items) {
       updateStmt.run(
         f.displayName, f.sfFieldType, f.visible ? 1 : 0,
-        f.sortOrder, f.exampleValue ?? null,
+        f.sortOrder, f.exampleValue ?? null, f.isSubField ? 1 : 0,
         datapointId, f.fieldName
       );
     }

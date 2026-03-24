@@ -126,22 +126,22 @@ export function layout(title: string, body: string): string {
       display: inline-flex; align-items: center;
       font-size: 10px; font-weight: 700;
       letter-spacing: 0.04em; text-transform: uppercase;
-      border-radius: 20px; padding: 3px 9px;
+      border-radius: 4px; padding: 3px 8px;
       white-space: nowrap; line-height: 1.4;
     }
-    .lbl-company-identity          { background: #f0f6f1; color: #343539; border: 1px solid #c8d5c9; }
-    .lbl-location-geography        { background: #fff8e8; color: #8a5c00; border: 1px solid #f0d080; }
-    .lbl-corporate-structure       { background: #f3eefb; color: #6a3fa0; border: 1px solid #d5c0ef; }
-    .lbl-financial-profile         { background: #fff3e8; color: #c06c1a; border: 1px solid #f5c88a; }
-    .lbl-technology-infrastructure { background: #eef2fc; color: #3a5fa0; border: 1px solid #b8c8ef; }
-    .lbl-sales-marketing           { background: #fbeef8; color: #8a2d7a; border: 1px solid #e8b0d8; }
-    .lbl-workforce-people          { background: #f0f6f1; color: #343539; border: 1px solid #c8d5c9; }
-    .lbl-hiring-talent             { background: #fbeee8; color: #a03a3a; border: 1px solid #f0b8a0; }
-    .lbl-customer-support          { background: #edf4ff; color: #2a5faa; border: 1px solid #b8d0f5; }
-    .lbl-compliance-risk           { background: #fdf4e8; color: #9a5a10; border: 1px solid #f0cc90; }
-    .lbl-ecommerce-retail          { background: #f0f8ff; color: #2a6a9a; border: 1px solid #a8d0ef; }
-    .lbl-operations                { background: #f5f5f5; color: #555;    border: 1px solid #d8d8d8; }
-    .lbl-industry-market           { background: #fff0f5; color: #a03060; border: 1px solid #f0b8cc; }
+    .lbl-company-identity          { background: #ccfbf1; color: #0f766e; }
+    .lbl-location-geography        { background: #fef3c7; color: #92400e; }
+    .lbl-corporate-structure       { background: #ede9fe; color: #5b21b6; }
+    .lbl-financial-profile         { background: #fef9c3; color: #713f12; }
+    .lbl-technology-infrastructure { background: #e0f2fe; color: #0369a1; }
+    .lbl-sales-marketing           { background: #fce7f3; color: #9d174d; }
+    .lbl-workforce-people          { background: #dcfce7; color: #166534; }
+    .lbl-hiring-talent             { background: #fee2e2; color: #991b1b; }
+    .lbl-customer-support          { background: #dbeafe; color: #1e40af; }
+    .lbl-compliance-risk           { background: #ffedd5; color: #9a3412; }
+    .lbl-ecommerce-retail          { background: #cffafe; color: #164e63; }
+    .lbl-operations                { background: #f1f5f9; color: #475569; }
+    .lbl-industry-market           { background: #e0e7ff; color: #3730a3; }
 
     /* ── Source badges ── */
     .source-badge {

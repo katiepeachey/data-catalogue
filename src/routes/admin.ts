@@ -55,6 +55,14 @@ router.post('/review/:id', async (req: Request, res: Response) => {
 
     const autoDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
+    // Handle classifier options updates
+    let classifierOptionsSample: string | null | undefined = undefined;
+    if (body.clearClassifierOptions === '1') {
+      classifierOptionsSample = null;
+    } else if (typeof body.updatedClassifierOptions === 'string' && body.updatedClassifierOptions) {
+      classifierOptionsSample = body.updatedClassifierOptions;
+    }
+
     updateSubmission(submission.id, {
       name: (body.name as string) || submission.name,
       category: (body.category as Category) || submission.category,
@@ -66,6 +74,7 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       labels,
       updatedDate: autoDate,
       status: 'approved',
+      ...(classifierOptionsSample !== undefined ? { classifierOptionsSample } : {}),
     });
 
     // Save field configuration — Express extended:true parses fields[i][key] as body.fields[i].key
@@ -75,6 +84,7 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       sfFieldType?: string;
       visible?: string;
       sortOrder?: string;
+      isSubField?: string;
     }>) || [];
 
     const existingFields = getFieldsForDatapoint(submission.id);
@@ -91,13 +101,14 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       const sortOrderParsed = parseInt(rf.sortOrder ?? '', 10);
       const sortOrder = isNaN(sortOrderParsed) ? fi : sortOrderParsed;
       const exampleValue = (rf as any).exampleValue || null;
+      const isSubField = rf.isSubField === '1';
 
       if (existingFieldNames.has(fieldName)) {
-        fieldUpdates.push({ fieldName, displayName, sfFieldType, visible, sortOrder, exampleValue });
+        fieldUpdates.push({ fieldName, displayName, sfFieldType, visible, sortOrder, exampleValue, isSubField });
       } else {
         // New field added manually via "Add Field" button
         addFieldToDatapoint(submission.id, fieldName, displayName, sfFieldType, exampleValue);
-        updateFieldConfig(submission.id, [{ fieldName, displayName, sfFieldType, visible, sortOrder, exampleValue }]);
+        updateFieldConfig(submission.id, [{ fieldName, displayName, sfFieldType, visible, sortOrder, exampleValue, isSubField }]);
       }
     }
 
@@ -195,6 +206,7 @@ router.post('/new', (req: Request, res: Response) => {
   }
 
   const updatedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const isApprove = (body._action as string) === 'approve';
 
   // Possible values: free text example or rigid schema options
   // Express extended:true parses name[] as body.name (array)
@@ -218,7 +230,7 @@ router.post('/new', (req: Request, res: Response) => {
     ) VALUES (
       ?, ?, ?, ?,
       '[]', ?, '', '',
-      ?, ?, ?, 'pending', datetime('now'), 0,
+      ?, ?, ?, ?, datetime('now'), ?,
       ?, ?, ?, ?, '[]',
       1,
       '[]', '[]', '[]', '[]',
@@ -233,6 +245,8 @@ router.post('/new', (req: Request, res: Response) => {
     body.source || 'kernel',
     JSON.stringify(labels),
     updatedDate,
+    isApprove ? 'approved' : 'pending',
+    isApprove ? 1 : 0,
     body.name || 'Untitled',
     body.description || '',
     body.category || 'Custom Enrichment',
@@ -255,7 +269,8 @@ router.post('/new', (req: Request, res: Response) => {
     addFieldToDatapoint(id, fn, dn, st, exampleValue);
   }
 
-  res.redirect('/admin/queue?msg=Datapoint+created+successfully');
+  const msg = isApprove ? 'Datapoint+approved+and+published' : 'Datapoint+created+successfully';
+  res.redirect(`/admin/queue?msg=${msg}`);
 });
 
 export default router;

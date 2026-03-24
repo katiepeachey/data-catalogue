@@ -171,6 +171,7 @@ export function updateDatapoint(id: string, updates: Partial<Submission>): Submi
   if (updates.updatedDate !== undefined) { sets.push('updated_date = ?'); params.push(updates.updatedDate); }
   if (updates.status !== undefined) { sets.push('status = ?'); params.push(updates.status); }
   if (updates.rejectionReason !== undefined) { sets.push('rejection_reason = ?'); params.push(updates.rejectionReason); }
+  if (updates.classifierOptionsSample !== undefined) { sets.push('classifier_options_sample = ?'); params.push(updates.classifierOptionsSample); }
 
   if (sets.length === 0) return getDatapoint(id);
 

@@ -99,6 +99,9 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
   }
   const hasOptions = classifierOptions.length > 0;
   const classifierOptionsJson = JSON.stringify(classifierOptions);
+  const classifierOptionsSampleJson = submission.classifierOptionsSample
+    ? escapeHtml(submission.classifierOptionsSample)
+    : 'null';
 
   const fieldConfigRows = fields.map((f, i) => {
     // Parse any existing per-option map
@@ -148,6 +151,10 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
       <td style="text-align:center;">
         <input type="checkbox" name="fields[${i}][visible]" value="1"${f.visible ? ' checked' : ''}
           style="width:16px;height:16px;accent-color:#8fb49a;" />
+      </td>
+      <td style="text-align:center;">
+        <input type="checkbox" name="fields[${i}][isSubField]" value="1"${f.isSubField ? ' checked' : ''}
+          style="width:16px;height:16px;accent-color:#8fb49a;" title="Indent this field as a sub-field in the catalogue" />
       </td>
       <td>
         <input class="form-input" type="number" name="fields[${i}][sortOrder]"
@@ -224,12 +231,13 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
                 <table class="field-config-table" id="fieldConfigTable">
                   <thead>
                     <tr>
-                      <th style="width:18%;">Original Name</th>
-                      <th style="width:18%;">Display Name</th>
-                      <th style="width:16%;">SF Field Type</th>
-                      <th style="width:10%;">Visible</th>
-                      <th style="width:10%;">Order</th>
-                      <th style="width:28%;">Example</th>
+                      <th style="width:16%;">Original Name</th>
+                      <th style="width:16%;">Display Name</th>
+                      <th style="width:14%;">SF Field Type</th>
+                      <th style="width:8%;">Visible</th>
+                      <th style="width:8%;">Sub-field</th>
+                      <th style="width:8%;">Order</th>
+                      <th style="width:30%;">Example</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -245,6 +253,31 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
                 </button>
               </div>
             </div>
+
+            ${hasOptions ? `
+            <div class="form-group">
+              <label class="form-label">Classifier Options</label>
+              <input type="hidden" name="updatedClassifierOptions" id="updatedClassifierOptions"
+                value="${classifierOptionsSampleJson}" />
+              <input type="hidden" name="clearClassifierOptions" id="clearClassifierOptions" value="0" />
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer;">
+                  <input type="checkbox" id="useOptionsToggle" checked
+                    style="accent-color:#8fb49a;width:14px;height:14px;cursor:pointer;"
+                    onchange="toggleOptionsClassifier(this)" />
+                  Use options classifier
+                </label>
+              </div>
+              <div id="optionChipsEdit" style="display:flex;flex-wrap:wrap;gap:6px;">
+                ${classifierOptions.map((opt) => `
+                  <span class="edit-option-chip">
+                    ${escapeHtml(opt)}
+                    <button type="button" class="remove-opt-btn" onclick="removeClassifierOption(this, '${escapeHtml(opt).replace(/'/g, "&#39;")}')"
+                      title="Remove option">&#x2715;</button>
+                  </span>`).join('')}
+              </div>
+            </div>
+            ` : ''}
 
             <div class="form-group">
               <label class="form-label" for="source">Source</label>
@@ -498,6 +531,21 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         width: 14px; height: 14px; flex-shrink: 0;
         cursor: pointer; accent-color: #2d7a4f;
       }
+
+      /* -- Edit option chips (remove individual options) -- */
+      .edit-option-chip {
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 11px; font-weight: 600;
+        background: #f0f2f0; color: #343539;
+        border: 1.5px solid #d8dcd8; border-radius: 20px;
+        padding: 3px 8px 3px 10px;
+      }
+      .remove-opt-btn {
+        background: none; border: none; cursor: pointer;
+        color: #a03a3a; font-size: 11px; padding: 0; line-height: 1;
+        display: inline-flex; align-items: center;
+      }
+      .remove-opt-btn:hover { color: #7a1a1a; }
 
       /* -- Admin option chips -- */
       .admin-chips { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -774,6 +822,95 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         });
       });
 
+      // Classifier options editing
+      var currentOptions = ${classifierOptionsJson}.slice(); // copy
+
+      function rebuildUpdatedClassifierOptions() {
+        var val = currentOptions.length > 0
+          ? JSON.stringify({ options: currentOptions.map(function(n) { return { name: n }; }) })
+          : '';
+        var hidden = document.getElementById('updatedClassifierOptions');
+        if (hidden) hidden.value = val;
+      }
+
+      function removeClassifierOption(btn, opt) {
+        currentOptions = currentOptions.filter(function(o) { return o !== opt; });
+        btn.closest('.edit-option-chip').remove();
+        rebuildUpdatedClassifierOptions();
+      }
+
+      function toggleOptionsClassifier(checkbox) {
+        var clearHidden = document.getElementById('clearClassifierOptions');
+        var chipsDiv = document.getElementById('optionChipsEdit');
+        var updatedHidden = document.getElementById('updatedClassifierOptions');
+        var rows = document.querySelectorAll('#fieldConfigTable tbody tr');
+        if (!checkbox.checked) {
+          if (clearHidden) clearHidden.value = '1';
+          if (updatedHidden) updatedHidden.value = '';
+          if (chipsDiv) chipsDiv.style.opacity = '0.35';
+          // Swap chip UI → plain text input for each field row
+          rows.forEach(function(tr, i) {
+            var hidden = document.getElementById('exVal_' + i);
+            if (!hidden) return;
+            var chipsEl = document.getElementById('adminChips_' + i);
+            var optInput = document.getElementById('optInput_' + i);
+            if (chipsEl) chipsEl.remove();
+            if (optInput) optInput.remove();
+            if (!document.getElementById('singleInput_' + i)) {
+              var inp = document.createElement('input');
+              inp.className = 'form-input';
+              inp.type = 'text';
+              inp.id = 'singleInput_' + i;
+              inp.placeholder = 'e.g. $12M';
+              inp.style.cssText = 'padding:6px 8px;font-size:12px;';
+              inp.oninput = (function(idx) { return function() {
+                var h = document.getElementById('exVal_' + idx);
+                if (h) h.value = this.value;
+              }; })(i);
+              hidden.parentNode.appendChild(inp);
+            }
+          });
+        } else {
+          if (clearHidden) clearHidden.value = '0';
+          rebuildUpdatedClassifierOptions();
+          if (chipsDiv) chipsDiv.style.opacity = '1';
+          // Swap plain text input → chip UI for each field row
+          rows.forEach(function(tr, i) {
+            var hidden = document.getElementById('exVal_' + i);
+            if (!hidden) return;
+            var singleInput = document.getElementById('singleInput_' + i);
+            if (singleInput) singleInput.remove();
+            if (!document.getElementById('adminChips_' + i)) {
+              var chipsEl = document.createElement('div');
+              chipsEl.className = 'admin-chips';
+              chipsEl.id = 'adminChips_' + i;
+              chipsEl.setAttribute('data-map', '{}');
+              currentOptions.forEach(function(opt, oi) {
+                var chip = document.createElement('span');
+                chip.className = 'admin-chip' + (oi === 0 ? ' active' : '');
+                chip.setAttribute('data-opt', opt);
+                chip.setAttribute('data-fi', String(i));
+                chip.textContent = opt;
+                chip.addEventListener('click', function() { adminSelectChip(chip, i); });
+                chipsEl.appendChild(chip);
+              });
+              adminChipMaps[i] = {};
+              adminActiveChip[i] = currentOptions[0] || null;
+              hidden.parentNode.insertBefore(chipsEl, hidden.nextSibling);
+              var optInput = document.createElement('input');
+              optInput.className = 'form-input';
+              optInput.type = 'text';
+              optInput.id = 'optInput_' + i;
+              optInput.value = '';
+              optInput.placeholder = currentOptions[0] ? 'Example for ' + currentOptions[0] + '...' : 'Example...';
+              optInput.style.cssText = 'margin-top:5px;padding:6px 8px;font-size:12px;width:100%;';
+              optInput.oninput = (function(idx) { return function() { updateChipExample(idx); }; })(i);
+              hidden.parentNode.appendChild(optInput);
+            }
+          });
+        }
+      }
+
       // Field config: add new row
       var fieldRowCount = ${fields.length};
 
@@ -796,6 +933,9 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         var td4 = document.createElement('td');
         td4.style.textAlign = 'center';
         td4.innerHTML = '<input type="checkbox" name="fields[' + i + '][visible]" value="1" checked style="width:16px;height:16px;accent-color:#8fb49a;" />';
+        var td4b = document.createElement('td');
+        td4b.style.textAlign = 'center';
+        td4b.innerHTML = '<input type="checkbox" name="fields[' + i + '][isSubField]" value="1" style="width:16px;height:16px;accent-color:#8fb49a;" title="Indent this field as a sub-field in the catalogue" />';
         var td5 = document.createElement('td');
         td5.innerHTML = '<input class="form-input" type="number" name="fields[' + i + '][sortOrder]" value="' + i + '" style="padding:6px 8px;font-size:12px;width:60px;" />';
 
@@ -845,7 +985,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         }
 
         tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3);
-        tr.appendChild(td4); tr.appendChild(td5); tr.appendChild(td6);
+        tr.appendChild(td4); tr.appendChild(td4b); tr.appendChild(td5); tr.appendChild(td6);
         tbody.appendChild(tr);
       }
     </script>

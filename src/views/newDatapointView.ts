@@ -2,7 +2,7 @@ import { Category, Label, SF_FIELD_TYPES } from '../types';
 import { layout, escapeHtml } from './layout';
 
 const ALL_LABELS: { value: Label; display: string }[] = [
-  { value: 'company-identity',          display: 'Company Identity' },
+  { value: 'company-identity',          display: 'Entity Identity' },
   { value: 'location-geography',        display: 'Location & Geography' },
   { value: 'corporate-structure',       display: 'Corporate Structure' },
   { value: 'financial-profile',         display: 'Financial Profile' },
@@ -139,13 +139,19 @@ export function newDatapointView(): string {
             </div>
           </div>
 
-          <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:12px;border-top:1px solid #eaeeea;">
+          <div style="display:flex;gap:10px;justify-content:flex-end;padding-top:12px;border-top:1px solid #eaeeea;flex-wrap:wrap;">
             <a href="/admin/queue" class="btn btn-outline">Cancel</a>
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" name="_action" value="create" class="btn btn-outline">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
-              Create Datapoint
+              Save as Pending
+            </button>
+            <button type="submit" name="_action" value="approve" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Approve &amp; Publish
             </button>
           </div>
 

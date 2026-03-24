@@ -91,38 +91,40 @@
     .dp-desc { font-size: 12.5px; color: #666; line-height: 1.55; }
 
     /* -- Sub-label chips -- */
-    .sub-labels { display: flex; flex-wrap: wrap; gap: 4px; }
+    .sub-labels { display: block; }
     .sub-label {
       display: inline-flex; align-items: center;
       font-size: 10px; font-weight: 700;
       letter-spacing: 0.04em; text-transform: uppercase;
-      border-radius: 20px; padding: 3px 9px;
-      white-space: normal; line-height: 1.4;
+      border-radius: 4px; padding: 3px 8px;
+      white-space: nowrap; line-height: 1.4;
       cursor: pointer; transition: opacity 0.15s;
+      margin: 0 4px 4px 0;
     }
     .sub-label:hover { opacity: 0.75; }
 
-    /* 13 label colours */
-    .lbl-company-identity        { background: #f0f6f1; color: #343539; border: 1px solid #c8d5c9; }
-    .lbl-location-geography      { background: #fff8e8; color: #8a5c00; border: 1px solid #f0d080; }
-    .lbl-corporate-structure     { background: #f3eefb; color: #6a3fa0; border: 1px solid #d5c0ef; }
-    .lbl-financial-profile       { background: #fff3e8; color: #c06c1a; border: 1px solid #f5c88a; }
-    .lbl-technology-infrastructure { background: #eef2fc; color: #3a5fa0; border: 1px solid #b8c8ef; }
-    .lbl-sales-marketing         { background: #fbeef8; color: #8a2d7a; border: 1px solid #e8b0d8; }
-    .lbl-workforce-people        { background: #f0f6f1; color: #343539; border: 1px solid #c8d5c9; }
-    .lbl-hiring-talent           { background: #fbeee8; color: #a03a3a; border: 1px solid #f0b8a0; }
-    .lbl-customer-support        { background: #edf4ff; color: #2a5faa; border: 1px solid #b8d0f5; }
-    .lbl-compliance-risk         { background: #fdf4e8; color: #9a5a10; border: 1px solid #f0cc90; }
-    .lbl-ecommerce-retail        { background: #f0f8ff; color: #2a6a9a; border: 1px solid #a8d0ef; }
-    .lbl-operations              { background: #f5f5f5; color: #555; border: 1px solid #d8d8d8; }
-    .lbl-industry-market         { background: #fff0f5; color: #a03060; border: 1px solid #f0b8cc; }
+    /* 13 label colours — no border, design-system palette */
+    .lbl-company-identity        { background: #ccfbf1; color: #0f766e; }
+    .lbl-location-geography      { background: #fef3c7; color: #92400e; }
+    .lbl-corporate-structure     { background: #ede9fe; color: #5b21b6; }
+    .lbl-financial-profile       { background: #fef9c3; color: #713f12; }
+    .lbl-technology-infrastructure { background: #e0f2fe; color: #0369a1; }
+    .lbl-sales-marketing         { background: #fce7f3; color: #9d174d; }
+    .lbl-workforce-people        { background: #dcfce7; color: #166534; }
+    .lbl-hiring-talent           { background: #fee2e2; color: #991b1b; }
+    .lbl-customer-support        { background: #dbeafe; color: #1e40af; }
+    .lbl-compliance-risk         { background: #ffedd5; color: #9a3412; }
+    .lbl-ecommerce-retail        { background: #cffafe; color: #164e63; }
+    .lbl-operations              { background: #f1f5f9; color: #475569; }
+    .lbl-industry-market         { background: #e0e7ff; color: #3730a3; }
 
     .sub-label.active-filter { outline: 2px solid currentColor; outline-offset: 1px; }
 
     /* -- Output fields -- */
-    .fields-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
-    .fields-list li { display: flex; align-items: center; }
-    .field-tag { display: inline-block; font-size: 12px; color: #343539; background: #f0f6f1; border: 1px solid #c8d5c9; border-radius: 4px; padding: 2px 7px; width: fit-content; }
+    .fields-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0; }
+    .fields-list li { display: flex; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid #f0f2f0; }
+    .fields-list li.expand-btn { border-bottom: none; padding-top: 6px; padding-bottom: 2px; }
+    .field-tag { display: inline-block; font-size: 12px; color: #343539; background: #f0f6f1; border: 1px solid #c8d5c9; border-radius: 20px; padding: 2px 7px; width: fit-content; }
 
     /* -- Possible values chips -- */
     .value-chip {
@@ -138,7 +140,7 @@
 
     /* -- Source badges -- */
     .source-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; border-radius: 6px; padding: 3px 9px; white-space: nowrap; }
-    .source-kernel   { background: #f0f6f1; color: #555; border: 1px solid #c8d5c9; font-size: 11px; font-weight: 500; font-style: italic; padding: 3px 8px; }
+    .source-kernel   { background: #f0f6f1; color: #555; border: 1px solid #c8d5c9; font-size: 11px; font-weight: 500; padding: 3px 8px; }
     .source-linkedin { background: #eaf2fc; color: #0a66c2; border: 1px solid #b3d0ef; }
     .source-badge svg { width: 11px; height: 11px; flex-shrink: 0; }
 
@@ -157,8 +159,8 @@
     .option-chip:hover { opacity: 0.8; }
     .option-chip.active { color: #fff; }
     /* -- Options/Values column per-field list -- */
-    .fex-list { display: flex; flex-direction: column; gap: 10px; }
-    .fex-item { min-height: 22px; display: flex; align-items: center; }
+    .fex-list { display: flex; flex-direction: column; gap: 0; }
+    .fex-item { min-height: 22px; display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f2f0; }
     .fex-empty { min-height: 22px; }
     .fex-val { font-size: 12px; color: #555; font-style: italic; line-height: 1.4; }
     .fex-reasoning .per-opt-ex {
@@ -196,11 +198,11 @@
       margin-left: 4px; vertical-align: middle;
       user-select: none; flex-shrink: 0;
     }
-    .th-tip.has-text { display: inline-flex; }
+    thead tr:hover .th-tip.has-text { display: inline-flex; }
 
     /* -- Category header info icon -- */
     .cat-tip {
-      display: inline-flex; align-items: center; justify-content: center;
+      display: none; align-items: center; justify-content: center;
       width: 13px; height: 13px; border-radius: 50%;
       border: 1.5px solid #a0c8a8; color: #2d7a4f;
       font-size: 8px; font-weight: 700; font-style: normal;
@@ -209,6 +211,7 @@
       margin-left: 6px; vertical-align: middle;
       user-select: none; flex-shrink: 0;
     }
+    tr.cat-row:hover .cat-tip { display: inline-flex; }
 
     /* -- Shared JS tooltip -- */
     #info-tooltip {
@@ -228,6 +231,53 @@
       margin-top: 4px; font-weight: 400; letter-spacing: 0;
       text-transform: none;
     }
+
+    /* -- Field name styles (plain text) -- */
+    .fields-list li { align-items: center; }
+    .field-name { font-size: 13px; color: #343539; }
+    .field-name-sub { font-size: 12px; color: #aaa; padding-left: 4px; }
+
+    /* -- SF type tip: only visible on row hover -- */
+    tr.data-row .sf-type-tip { display: none; }
+    tr.data-row:hover .sf-type-tip { display: inline-flex; }
+
+    /* -- Value dropdown -- */
+    .val-dropdown { position: relative; display: inline-block; }
+    .val-dropdown-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 1px solid #dde3dd; border-radius: 6px;
+      padding: 3px 8px 3px 10px; font-size: 12px; color: #343539;
+      background: #fff; cursor: pointer; white-space: nowrap; user-select: none;
+    }
+    .val-dropdown-btn:hover { border-color: #b5c4b6; }
+    .val-dropdown-btn svg { width: 10px; height: 10px; color: #aaa; flex-shrink: 0; }
+    .val-dropdown-list {
+      display: none; position: absolute; top: calc(100% + 4px); left: 0;
+      background: #fff; border: 1px solid #e0e4e0; border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.1); z-index: 200; min-width: 130px; overflow: hidden;
+    }
+    .val-dropdown-list.open { display: block; }
+    .val-dropdown-item { padding: 7px 12px; font-size: 12px; color: #343539; cursor: pointer; }
+    .val-dropdown-item:hover { background: #f5f6f6; }
+    .val-dropdown-item.active { font-weight: 600; color: #2d7a4f; }
+
+    /* -- Row expand/collapse -- */
+    .fields-list li.field-extra { display: none; }
+    tr.row-expanded .fields-list li.field-extra { display: flex; }
+    .fex-list > div.fex-extra { display: none; }
+    tr.row-expanded .fex-list > div.fex-extra { display: flex; }
+    .expand-btn { list-style: none; cursor: pointer; padding-top: 6px; }
+    .expand-btn span { font-size: 11px; color: #8fb49a; font-weight: 600; }
+    .expand-btn .less-label { display: none; }
+    tr.row-expanded .expand-btn .more-label { display: none; }
+    tr.row-expanded .expand-btn .less-label { display: inline; }
+
+    /* -- Category collapse arrow -- */
+    .cat-arrow { margin-left: 6px; font-size: 11px; color: #2d7a4f; display: inline-block; transition: transform 0.2s; }
+    .cat-row-inner { cursor: pointer; }
+
+    /* -- Source plain text -- */
+    .source-plain { font-size: 12px; color: #666; }
   </style>
 </head>
 <body>
@@ -278,12 +328,6 @@
     </select>
   </div>
 
-  <div class="stats-row">
-    <div class="stat-pill">Datapoints <span class="count" id="totalCount">0</span></div>
-    <div class="stat-pill">Categories <span class="count">6</span></div>
-    <div class="stat-pill">Labels <span class="count">13</span></div>
-  </div>
-
   <div class="card">
     <div class="table-scroll">
       <table id="catalogueTable">
@@ -301,7 +345,7 @@
             <th>Datapoint <i class="th-tip" id="tip-datapoint"></i></th>
             <th>Description <i class="th-tip" id="tip-description"></i></th>
             <th>Output Fields <i class="th-tip" id="tip-output_fields"></i></th>
-            <th>Example / Possible Values <i class="th-tip" id="tip-example_values"></i></th>
+            <th>Value <i class="th-tip" id="tip-example_values"></i></th>
             <th>Source <i class="th-tip" id="tip-source"></i></th>
           </tr>
         </thead>
@@ -323,6 +367,7 @@ function loadDatapoints() {
     .then(function(res) { return res.json(); })
     .then(function(data) {
       allDatapoints = data.datapoints || [];
+      updateFilterCounts();
       renderTable();
     })
     .catch(function(err) {
@@ -380,6 +425,18 @@ var CAT_COLOURS = {
   'Custom Enrichment':  { dot: '#5aa8c8', bg: '#eaf6fb', text: '#2a7a9a' }
 };
 
+var collapsedCats = {};
+
+function toggleCat(cat) {
+  collapsedCats[cat] = !collapsedCats[cat];
+  var isCollapsed = collapsedCats[cat];
+  document.querySelectorAll('tr.data-row[data-cat="' + cat + '"]').forEach(function(row) {
+    row.style.display = isCollapsed ? 'none' : '';
+  });
+  var arrow = document.querySelector('.cat-arrow[data-cat="' + cat + '"]');
+  if (arrow) arrow.textContent = isCollapsed ? '▸' : '▾';
+}
+
 function setLabelFilter(label) {
   activeLabelFilter = activeLabelFilter === label ? '' : label;
   document.getElementById('labelFilter').value = activeLabelFilter;
@@ -389,6 +446,23 @@ function setLabelFilter(label) {
 function filterTable() {
   activeLabelFilter = document.getElementById('labelFilter').value;
   renderTable();
+}
+
+function updateFilterCounts() {
+  var total = allDatapoints.length;
+  document.getElementById('searchInput').placeholder = 'Search ' + total + ' datapoints...';
+
+  var catCounts = {};
+  allDatapoints.forEach(function(dp) { catCounts[dp.category] = (catCounts[dp.category] || 0) + 1; });
+  Array.from(document.getElementById('categoryFilter').options).forEach(function(opt) {
+    if (opt.value) opt.text = opt.value + ' (' + (catCounts[opt.value] || 0) + ')';
+  });
+
+  var labelCounts = {};
+  allDatapoints.forEach(function(dp) { (dp.labels || []).forEach(function(l) { labelCounts[l] = (labelCounts[l] || 0) + 1; }); });
+  Array.from(document.getElementById('labelFilter').options).forEach(function(opt) {
+    if (opt.value) opt.text = (LABEL_DISPLAY[opt.value] || opt.value) + ' (' + (labelCounts[opt.value] || 0) + ')';
+  });
 }
 
 function renderTable() {
@@ -429,14 +503,13 @@ function renderTable() {
     var subtext = CAT_SUBTEXT[cat] ? '<div class="cat-subtext">' + escapeHtml(CAT_SUBTEXT[cat]) + '</div>' : '';
     var catHtKey = CAT_HELPTEXT_KEY[cat] || '';
     var catHtText = catHtKey && columnHelptext[catHtKey] ? columnHelptext[catHtKey] : '';
-    var catTipHtml = catHtText
-      ? '<i class="cat-tip" data-tip="' + escapeHtml(catHtText) + '">i</i>'
-      : '';
-    catRow.innerHTML = '<td colspan="6"><div class="cat-row-inner"><span class="cat-label">' +
+    var catTipHtml = catHtText ? '<i class="cat-tip" data-tip="' + escapeHtml(catHtText) + '">i</i>' : '';
+    catRow.innerHTML = '<td colspan="6"><div class="cat-row-inner" onclick="toggleCat(\'' + escapeHtml(cat) + '\')"><span class="cat-label">' +
       '<span class="cat-dot" style="background:' + colours.dot + ';"></span>' +
       escapeHtml(cat) +
       ' <span class="cat-count" style="background:' + colours.bg + ';color:' + colours.text + ';">' + dps.length + '</span>' +
       catTipHtml +
+      '<span class="cat-arrow" data-cat="' + escapeHtml(cat) + '">▾</span>' +
       '</span>' + subtext + '</div></td>';
     tbody.appendChild(catRow);
 
@@ -446,6 +519,8 @@ function renderTable() {
       var tr = document.createElement('tr');
       tr.className = 'data-row';
       tr.id = rowId;
+      tr.setAttribute('data-cat', cat);
+      if (collapsedCats[cat]) tr.style.display = 'none';
 
       var colours = CAT_COLOURS[dp.category] || CAT_COLOURS['Custom Enrichment'];
 
@@ -465,100 +540,100 @@ function renderTable() {
           (LABEL_DISPLAY[l] || l) + '</span>';
       }).join('');
 
-      // Output Fields — field name tags only (examples go in Options column)
       var dpFields = dp.fields || [];
-      var fieldsHtml = dpFields.length > 0
-        ? '<ul class="fields-list">' + dpFields.map(function(f) {
-            var tipHtml = f.sfFieldType ? '<i class="sf-type-tip" data-tip="' + escapeHtml(f.sfFieldType) + '">i</i>' : '';
-            return '<li><span class="field-tag">' + escapeHtml(f.displayName) + '</span>' + tipHtml + '</li>';
-          }).join('') + '</ul>'
-        : '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
+      var MAX_FIELDS = 3;
+      var extraCount = Math.max(0, dpFields.length - MAX_FIELDS);
 
-      // Options / Example column
+      var fieldsHtml = dpFields.length > 0 ? (function() {
+        var items = dpFields.map(function(f, idx) {
+          var isReasoning = f.isSubField || /reasoning|confidence/i.test(f.fieldName + f.displayName);
+          var extraClass = idx >= MAX_FIELDS ? ' field-extra' : '';
+          var tipHtml = f.sfFieldType ? '<i class="sf-type-tip" data-tip="' + escapeHtml(f.sfFieldType) + '">i</i>' : '';
+          if (isReasoning) {
+            return '<li class="field-item' + extraClass + '"><span class="field-name-sub">↳ ' + escapeHtml(f.displayName) + '</span>' + tipHtml + '</li>';
+          }
+          return '<li class="field-item' + extraClass + '"><span class="field-name">' + escapeHtml(f.displayName) + '</span>' + tipHtml + '</li>';
+        }).join('');
+        var expandBtn = extraCount > 0
+          ? '<li class="expand-btn" onclick="toggleExpandRow(\'' + rowId + '\')">' +
+            '<span class="more-label">↓ ' + extraCount + ' more</span>' +
+            '<span class="less-label">↑ Less</span></li>'
+          : '';
+        return '<ul class="fields-list">' + items + expandBtn + '</ul>';
+      })() : '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
+
+      // Value column
       var CHIP_ACTIVE_COLOR = '#8fb49a';
       var optionsHtml = (function() {
-        if (chipOpts.length > 0) {
-          var chipsHtml = chipOpts.map(function(opt, idx) {
-            var activeStyle = idx === 0
-              ? 'background:' + CHIP_ACTIVE_COLOR + ';border-color:' + CHIP_ACTIVE_COLOR + ';color:#fff;'
-              : '';
-            return '<span class="option-chip' + (idx === 0 ? ' active' : '') + '"' +
-              ' style="' + activeStyle + '"' +
-              ' data-opt="' + escapeHtml(opt) + '"' +
-              ' data-colour="' + CHIP_ACTIVE_COLOR + '"' +
-              ' onclick="selectChip(this, \'' + rowId + '\')">' +
-              escapeHtml(opt) + '</span>';
-          }).join('');
+        if (dpFields.length === 0) {
+          if (dp.exampleValue) return '<span style="font-size:12px;color:#343539;">' + escapeHtml(dp.exampleValue) + '</span>';
+          return '<span style="color:#ccc;font-size:12px;">&mdash;</span>';
+        }
 
-          var chipsPlaced = false;
-          var rows = dpFields.map(function(f) {
+        if (chipOpts.length > 0) {
+          var chevronSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>';
+          var dropdownHtml = '<div class="val-dropdown">' +
+            '<div class="val-dropdown-btn" onclick="toggleValDropdown(\'' + rowId + '\')">' +
+            '<span class="val-dropdown-text">' + escapeHtml(chipOpts[0]) + '</span>' + chevronSvg +
+            '</div>' +
+            '<div class="val-dropdown-list" id="vdl_' + rowId + '">' +
+            chipOpts.map(function(opt, idx) {
+              return '<div class="val-dropdown-item' + (idx === 0 ? ' active' : '') + '" data-opt="' + escapeHtml(opt) + '" onclick="selectValOption(this,\'' + rowId + '\')">' + escapeHtml(opt) + '</div>';
+            }).join('') +
+            '</div></div>';
+
+          var dropdownPlaced = false;
+          var rows = dpFields.map(function(f, idx) {
+            var extraClass = idx >= MAX_FIELDS ? ' fex-extra' : '';
             if (f.exampleValue) {
               try {
                 var exMap = JSON.parse(f.exampleValue);
                 if (exMap && typeof exMap === 'object' && !Array.isArray(exMap)) {
                   var firstVal = firstChip ? (exMap[firstChip] || '') : '';
                   if (!firstVal) { var vals = Object.values(exMap); firstVal = vals.length ? String(vals[0]) : ''; }
-                  return '<div class="fex-item fex-reasoning">' +
+                  return '<div class="fex-item fex-reasoning' + extraClass + '">' +
                     '<span class="per-opt-ex" data-exmap="' + JSON.stringify(exMap).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '">' +
                     escapeHtml(String(firstVal)) + '</span></div>';
                 }
               } catch(e) {}
             }
-            if (!chipsPlaced) {
-              chipsPlaced = true;
-              return '<div class="fex-item"><div class="values-cell" id="chips_' + rowId + '">' + chipsHtml + '</div></div>';
+            if (!dropdownPlaced) {
+              dropdownPlaced = true;
+              return '<div class="fex-item' + extraClass + '">' + dropdownHtml + '</div>';
             }
-            return '<div class="fex-item fex-empty"></div>';
+            return '<div class="fex-item fex-empty' + extraClass + '"></div>';
           }).join('');
 
-          if (!chipsPlaced) {
-            return '<div class="fex-list"><div class="fex-item"><div class="values-cell" id="chips_' + rowId + '">' + chipsHtml + '</div></div>' + rows + '</div>';
+          if (!dropdownPlaced) {
+            return '<div class="fex-list"><div class="fex-item">' + dropdownHtml + '</div>' + rows + '</div>';
           }
           return '<div class="fex-list">' + rows + '</div>';
         }
 
-        var fieldExRows = dpFields.map(function(f) {
-          if (!f.exampleValue) return '<div class="fex-item fex-empty"></div>';
+        var fieldExRows = dpFields.map(function(f, idx) {
+          var extraClass = idx >= MAX_FIELDS ? ' fex-extra' : '';
+          if (!f.exampleValue) return '<div class="fex-item fex-empty' + extraClass + '"></div>';
           var ex = '';
           try {
             var exMap = JSON.parse(f.exampleValue);
             if (exMap && typeof exMap === 'object' && !Array.isArray(exMap)) {
-              var vals = Object.values(exMap);
-              ex = vals.length ? String(vals[0]) : '';
+              ex = String(Object.values(exMap)[0] || '');
             } else {
               ex = String(f.exampleValue);
             }
           } catch(e) { ex = String(f.exampleValue); }
           return ex
-            ? '<div class="fex-item"><span class="fex-val">' + escapeHtml(ex) + '</span></div>'
-            : '<div class="fex-item fex-empty"></div>';
+            ? '<div class="fex-item' + extraClass + '"><span class="fex-val">' + escapeHtml(ex) + '</span></div>'
+            : '<div class="fex-item fex-empty' + extraClass + '"></div>';
         }).join('');
 
-        if (fieldExRows) return '<div class="fex-list">' + fieldExRows + '</div>';
-
-        if (dp.exampleValue) {
-          var parts = '<span style="font-size:12px;color:#343539;line-height:1.5;">' + escapeHtml(dp.exampleValue) + '</span>';
-          if (dp.exampleEvidence) {
-            parts += '<br><span style="font-size:11px;color:#999;font-style:italic;">' + escapeHtml(dp.exampleEvidence) + '</span>';
-          }
-          if (dp.exampleUrl) {
-            var safeUrl = String(dp.exampleUrl).replace(/"/g, '%22');
-            parts += '<br><a href="' + safeUrl + '" target="_blank" rel="noopener" style="font-size:11px;color:#5a8fd4;word-break:break-all;">' + escapeHtml(dp.exampleUrl) + '</a>';
-          }
-          return '<div>' + parts + '</div>';
-        }
-        var dt = dp.dataType || 'text';
-        var dtLabel = { 'string': 'Free text', 'number': 'Number', 'boolean': 'True / False', 'date': 'Date', 'string_array': 'List' }[dt.toLowerCase()] || 'Free text';
-        return '<span class="data-type-label">' + escapeHtml(dtLabel) + '</span>';
+        return '<div class="fex-list">' + fieldExRows + '</div>';
       })();
 
-      var linkedinSvg = '<svg viewBox="0 0 24 24" fill="currentColor" style="width:11px;height:11px;flex-shrink:0;"><path d="M20.447 20.452H16.89v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a1.98 1.98 0 0 1-1.983-1.98 1.98 1.98 0 0 1 3.962 0 1.98 1.98 0 0 1-1.979 1.98zm1.961 13.019H3.374V9h3.924v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>';
-      var kernelBadge = '<span class="source-badge source-kernel">Kernel</span>';
-      var sourceBadge = dp.source === 'linkedin'
-        ? '<span class="source-badge source-linkedin">' + linkedinSvg + 'LinkedIn</span>'
-        : dp.source === 'both'
-        ? '<div style="display:flex;gap:4px;flex-wrap:wrap;">' + kernelBadge + '<span class="source-badge source-linkedin">' + linkedinSvg + 'LinkedIn</span></div>'
-        : kernelBadge;
+      var sourceText = dp.source === 'linkedin' ? 'LinkedIn'
+        : dp.source === 'both' ? 'Kernel, LinkedIn'
+        : 'Kernel';
+      var sourceBadge = '<span class="source-plain">' + escapeHtml(sourceText) + '</span>';
 
       tr.innerHTML =
         '<td><div class="sub-labels">' + labelsHtml + '</div></td>' +
@@ -573,7 +648,6 @@ function renderTable() {
     });
   });
 
-  document.getElementById('totalCount').textContent = totalVisible;
   document.getElementById('emptyState').style.display = totalVisible === 0 ? 'block' : 'none';
 }
 
@@ -611,19 +685,55 @@ function selectChip(chipEl, rowId) {
   });
 }
 
-// Sync field tag rows with their example rows so they stay vertically aligned
+function toggleExpandRow(rowId) {
+  var tr = document.getElementById(rowId);
+  if (!tr) return;
+  tr.classList.toggle('row-expanded');
+  syncFieldExamples(rowId);
+}
+
+function toggleValDropdown(rowId) {
+  var list = document.getElementById('vdl_' + rowId);
+  if (!list) return;
+  var isOpen = list.classList.contains('open');
+  document.querySelectorAll('.val-dropdown-list.open').forEach(function(el) { el.classList.remove('open'); });
+  if (!isOpen) list.classList.add('open');
+}
+
+function selectValOption(item, rowId) {
+  var opt = item.getAttribute('data-opt');
+  var btn = document.querySelector('#vdl_' + rowId).previousElementSibling.querySelector('.val-dropdown-text');
+  if (btn) btn.textContent = opt;
+  document.querySelectorAll('#vdl_' + rowId + ' .val-dropdown-item').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-opt') === opt);
+  });
+  var row = document.getElementById(rowId);
+  if (row) row.querySelectorAll('.per-opt-ex').forEach(function(el) {
+    try { var map = JSON.parse(el.getAttribute('data-exmap') || '{}'); el.textContent = map[opt] || ''; } catch(e) {}
+  });
+  document.getElementById('vdl_' + rowId).classList.remove('open');
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.val-dropdown')) {
+    document.querySelectorAll('.val-dropdown-list.open').forEach(function(el) { el.classList.remove('open'); });
+  }
+});
+
+// Sync output field rows with value rows so they stay vertically aligned
 function syncFieldExamples(rowId) {
   var row = document.getElementById(rowId);
   if (!row) return;
-  var fieldItems = row.querySelectorAll('.fields-list li');
-  var fexItems = row.querySelectorAll('.fex-list > div');
+  var fieldItems = Array.from(row.querySelectorAll('.fields-list li:not(.expand-btn)'));
+  var fexItems = Array.from(row.querySelectorAll('.fex-list > div'));
+  fieldItems.forEach(function(el) { el.style.minHeight = ''; });
+  fexItems.forEach(function(el) { el.style.minHeight = ''; });
   var count = Math.min(fieldItems.length, fexItems.length);
   for (var i = 0; i < count; i++) {
-    fieldItems[i].style.minHeight = '';
-    fexItems[i].style.minHeight = '';
-    var maxH = Math.max(fieldItems[i].offsetHeight, fexItems[i].offsetHeight);
-    fieldItems[i].style.minHeight = maxH + 'px';
-    fexItems[i].style.minHeight = maxH + 'px';
+    var fi = fieldItems[i], fx = fexItems[i];
+    if (getComputedStyle(fi).display === 'none' || getComputedStyle(fx).display === 'none') continue;
+    var maxH = Math.max(fi.offsetHeight, fx.offsetHeight);
+    if (maxH > 0) { fi.style.minHeight = maxH + 'px'; fx.style.minHeight = maxH + 'px'; }
   }
 }
 
@@ -670,20 +780,15 @@ function loadHelptext() {
     .then(function(res) { return res.json(); })
     .then(function(data) {
       columnHelptext = data;
-      // Column header icons
       var colKeys = ['labels', 'datapoint', 'description', 'output_fields', 'example_values', 'source'];
       colKeys.forEach(function(key) {
         var text = data[key] || '';
         var el = document.getElementById('tip-' + key);
-        if (!el) return;
-        if (text) {
-          el.setAttribute('data-tip', text);
-          el.textContent = 'i';
-          el.classList.add('has-text');
-        }
+        if (!el || !text) return;
+        el.setAttribute('data-tip', text);
+        el.textContent = 'i';
+        el.classList.add('has-text');
       });
-      // Re-render table so category tips pick up the loaded helptext
-      renderTable();
     })
     .catch(function() {});
 }
