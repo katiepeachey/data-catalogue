@@ -912,9 +912,12 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
       }
 
       // On submit: flush the currently active chip's input for every field before sending
+      // Only flush fields still in chip mode (optInput present) — free-text fields manage exVal directly
       form.addEventListener('submit', function() {
         Object.keys(adminActiveChip).forEach(function(fi) {
-          updateChipExample(parseInt(fi, 10));
+          if (document.getElementById('optInput_' + fi)) {
+            updateChipExample(parseInt(fi, 10));
+          }
         });
       });
 
