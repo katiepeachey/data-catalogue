@@ -276,7 +276,6 @@
   <div class="navbar-actions">
     <a href="https://docs.kernel.ai" target="_blank" rel="noopener" class="btn-text">Kernel Docs</a>
     <a href="https://app.kernel.ai" target="_blank" rel="noopener" class="btn-text">Kernel App</a>
-    <a href="/admin/queue" class="btn-admin">Admin</a>
   </div>
 </nav>
 
@@ -533,11 +532,10 @@ function renderTable() {
         var items = dpFields.map(function(f, idx) {
           var isReasoning = f.isSubField || /reasoning|confidence/i.test(f.fieldName + f.displayName);
           var extraClass = idx >= MAX_FIELDS ? ' field-extra' : '';
-          var tipHtml = f.sfFieldType ? '<i class="sf-type-tip" data-tip="' + escapeHtml(f.sfFieldType) + '">i</i>' : '';
           if (isReasoning) {
-            return '<li class="field-item' + extraClass + '"><span class="field-name-sub">↳ ' + escapeHtml(f.displayName) + '</span>' + tipHtml + '</li>';
+            return '<li class="field-item' + extraClass + '"><span class="field-name-sub">↳ ' + escapeHtml(f.displayName) + '</span></li>';
           }
-          return '<li class="field-item' + extraClass + '"><span class="field-name">' + escapeHtml(f.displayName) + '</span>' + tipHtml + '</li>';
+          return '<li class="field-item' + extraClass + '"><span class="field-name">' + escapeHtml(f.displayName) + '</span></li>';
         }).join('');
         var expandBtn = extraCount > 0
           ? '<li class="expand-btn" onclick="toggleExpandRow(\'' + rowId + '\')">' +
