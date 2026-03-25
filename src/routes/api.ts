@@ -33,6 +33,7 @@ router.get('/datapoints', (req: Request, res: Response) => {
         displayName: f.displayName,
         sfFieldType: f.sfFieldType,
         exampleValue: f.exampleValue || null,
+        isSubField: f.isSubField,
       })),
       classifierOptionsSample: dp.classifierOptionsSample || null,
     };
