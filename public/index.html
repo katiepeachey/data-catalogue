@@ -434,7 +434,7 @@ function filterTable() {
 
 function updateFilterCounts() {
   var total = allDatapoints.length;
-  document.getElementById('searchInput').placeholder = 'Search ' + total + ' datapoints...';
+  document.getElementById('searchInput').placeholder = 'Search ' + total + ' agents...';
 
   var catCounts = {};
   allDatapoints.forEach(function(dp) { catCounts[dp.category] = (catCounts[dp.category] || 0) + 1; });
