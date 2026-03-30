@@ -13,8 +13,8 @@ This is a static HTML catalogue of Kernel AI datapoints. It is a single-file fro
 - **Auto-deploy**: Render deploys automatically on pushes to `main`
 - To trigger a manual deploy via API:
   ```bash
-  curl -X POST "https://api.render.com/v1/services/srv-d6o7v7vgi27c73e97s6g/deploys" \
-    -H "Authorization: Bearer <RENDER_API_KEY>" \
+  curl -X POST "https://api.render.com/v1/services/srv-d6o8ne450q8c73an0s30/deploys" \
+    -H "Authorization: Bearer rnd_30NbytgzDIp4i6eMMnT2BiAH01XL" \
     -H "Content-Type: application/json" \
     -d '{"clearCache": "do_not_clear"}'
   ```
@@ -23,7 +23,9 @@ This is a static HTML catalogue of Kernel AI datapoints. It is a single-file fro
 
 - GitHub CLI is installed at `~/.local/bin/gh` (not in system PATH by default — open a new terminal or use full path)
 - Authenticated as `katiepeachey`
-- Active branch: `first-build`; production branch: `main`
+- Production branch: `main`
+
+**IMPORTANT**: Never commit or push code changes directly to `main`. Always create a new feature branch first, make changes there, then merge into `main` when ready.
 
 ## Tools
 
