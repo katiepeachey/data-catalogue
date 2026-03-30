@@ -1,7 +1,7 @@
 {
   "name": "data-catalogue-admin",
   "version": "1.0.0",
-  "description": "Kernel AI Data Catalogue Admin System",
+  "description": "Kernel AI Agent Catalogue Admin System",
   "main": "dist/server.js",
   "scripts": {
     "build": "tsc && mkdir -p dist/db/migrations && cp src/db/migrations/*.sql dist/db/migrations/",

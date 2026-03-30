@@ -40,7 +40,7 @@ export function syncConfigView(flows: FlowEntry[], msg?: string): string {
         <div style="padding:16px 20px 12px;border-bottom:1px solid #eaeeea;">
           <h2 style="font-size:14px;font-weight:700;color:#1a1a1a;">Flow Whitelist</h2>
           <p style="font-size:12px;color:#999;margin-top:3px;">
-            Flows tagged "Data Catalogue" in the portal — add their ID or paste the URL path
+            Flows tagged "Agent Catalogue" in the portal — add their ID or paste the URL path
             (e.g. <code>workflows/44575</code> or just <code>44575</code>).
             Control agents with type&nbsp;135 are picked up automatically.
           </p>

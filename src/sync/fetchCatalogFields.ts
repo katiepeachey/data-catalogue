@@ -2,7 +2,7 @@ import { query } from '../db/motherduck';
 import { DATA_CATALOGUE_TYPE_ID } from './dataCatalogueConfig';
 
 /**
- * One row per top-level Data Catalogue agent.
+ * One row per top-level Agent Catalogue agent.
  * catalog_field_names contains all the catalog field names produced by that agent
  * (these become the "output fields" shown in the catalogue).
  */
@@ -25,7 +25,7 @@ export interface RawCatalogField {
 }
 
 /**
- * Fetch Data Catalogue agents from MotherDuck, grouped by top-level agent.
+ * Fetch Agent Catalogue agents from MotherDuck, grouped by top-level agent.
  *
  * Uses agent_type_id = 135 directly from the snapshot, which carries type info
  * for both control agents and flows. No separate config table queries needed.
@@ -33,7 +33,7 @@ export interface RawCatalogField {
 export async function fetchCatalogFields(): Promise<RawCatalogField[]> {
   const sql = `
     WITH data_catalogue_agents AS (
-      -- All agents/flows tagged as Data Catalogue, sourced directly from the snapshot.
+      -- All agents/flows tagged as Agent Catalogue, sourced directly from the snapshot.
       -- The snapshot carries agent_type_id for both control agents and flows.
       SELECT DISTINCT agent_id, agent_name
       FROM core.agent_classifier_field_snapshot

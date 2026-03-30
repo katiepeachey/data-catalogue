@@ -1,5 +1,5 @@
 /**
- * Data Catalogue agent/flow designation config.
+ * Agent Catalogue agent/flow designation config.
  *
  * Both control agents and flows are now picked up automatically via
  * agent_type_name = 'Data Catalogue' in MotherDuck.
@@ -8,18 +8,18 @@
  * It can also be managed at runtime via /admin/sync-config.
  */
 
-/** agent_type_name value for "Data Catalogue" in the portal */
+/** agent_type_name value for "Data Catalogue" in the portal (do not rename — must match MotherDuck) */
 export const DATA_CATALOGUE_TYPE_NAME = 'Data Catalogue';
 
 /** Kept for reference / fallback only — auto-detection now uses agent_type_name */
 export const DATA_CATALOGUE_TYPE_ID = 135;
 
 /**
- * Flow IDs (q_flow_configs.id) tagged as Data Catalogue in the portal.
+ * Flow IDs (q_flow_configs.id) tagged as Agent Catalogue in the portal.
  * These come from the portal's agent_type_configs junction table which
  * isn't synced to MotherDuck.
  *
- * To find new IDs: check the portal Agents page → Types → Data Catalogue
+ * To find new IDs: check the portal Agents page → Types → Agent Catalogue
  */
 export const DATA_CATALOGUE_FLOW_IDS: number[] = [
   43769,  // Legal Name [v2]

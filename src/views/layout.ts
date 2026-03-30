@@ -200,7 +200,7 @@ export function layout(title: string, body: string): string {
         <rect x="3" y="3" width="18" height="18" rx="2"/>
         <path d="M9 9h6M9 12h6M9 15h4"/>
       </svg>
-      View Catalogue
+      View Agent Catalogue
     </a>
     <a class="nav-link" href="/admin/queue">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
