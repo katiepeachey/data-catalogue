@@ -283,7 +283,7 @@
   <div class="toolbar">
     <div class="search-wrap">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input class="search-input" id="searchInput" type="text" placeholder="Search datapoints..." oninput="filterTable()"/>
+      <input class="search-input" id="searchInput" type="text" placeholder="Search agents..." oninput="filterTable()"/>
     </div>
     <select class="filter-select" id="categoryFilter" onchange="filterTable()">
       <option value="">All Categories</option>
@@ -326,7 +326,7 @@
         <thead>
           <tr>
             <th>Labels <i class="th-tip" id="tip-labels"></i></th>
-            <th>Datapoint <i class="th-tip" id="tip-datapoint"></i></th>
+            <th>Agent <i class="th-tip" id="tip-datapoint"></i></th>
             <th>Description <i class="th-tip" id="tip-description"></i></th>
             <th>Output Fields <i class="th-tip" id="tip-output_fields"></i></th>
             <th>Value <i class="th-tip" id="tip-example_values"></i></th>
@@ -335,7 +335,7 @@
         </thead>
         <tbody id="tableBody"></tbody>
       </table>
-      <div class="empty-state" id="emptyState">No datapoints match your filters.</div>
+      <div class="empty-state" id="emptyState">No agents match your filters.</div>
     </div>
   </div>
 </div>
