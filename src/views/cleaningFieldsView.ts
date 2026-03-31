@@ -1,8 +1,9 @@
 import { CleaningField } from '../db/cleaningFields';
 import { layout, escapeHtml } from './layout';
+import { SF_FIELD_TYPES } from '../types';
 
 const CATEGORIES = ['required', 'recommended', 'optional'] as const;
-const FIELD_TYPES = ['Text', 'Text (Long)', 'Text Area (Long)', 'Number', 'URL', 'Lookup', 'DateTime', 'Checkbox'];
+const FIELD_TYPES = [...SF_FIELD_TYPES];
 const CATEGORY_LABELS: Record<string, string> = { required: 'Required', recommended: 'Recommended', optional: 'Optional' };
 
 function row(f: CleaningField, i: number): string {
