@@ -2,7 +2,7 @@ import { CleaningField } from '../db/cleaningFields';
 import { layout, escapeHtml } from './layout';
 
 const CATEGORIES = ['required', 'recommended', 'optional'] as const;
-const FIELD_TYPES = ['Text', 'Text (Long)', 'Text Area (Long)', 'Number', 'URL', 'Lookup'];
+const FIELD_TYPES = ['Text', 'Text (Long)', 'Text Area (Long)', 'Number', 'URL', 'Lookup', 'DateTime', 'Checkbox'];
 const CATEGORY_LABELS: Record<string, string> = { required: 'Required', recommended: 'Recommended', optional: 'Optional' };
 
 function row(f: CleaningField, i: number): string {
@@ -22,7 +22,7 @@ function row(f: CleaningField, i: number): string {
     <td>
       <select class="form-select" name="fieldLength" style="padding:5px 8px;font-size:13px;width:90px;">
         <option value="">—</option>
-        ${[18,40,80,100,255,500,1000,4000,5000,32768].map((v) =>
+        ${[18,40,80,100,255,500,1000,4096,5000,32768].map((v) =>
           `<option value="${v}"${f.fieldLength === v ? ' selected' : ''}>${v}</option>`
         ).join('')}
       </select>
@@ -103,7 +103,7 @@ ${flashHtml}
               <div><label class="field-card-label">Length</label>
                 <select class="form-select" id="new_fieldLength" style="width:90px;">
                   <option value="">—</option>
-                  ${[18,40,80,100,255,500,1000,4000,5000,32768].map((v) => `<option value="${v}">${v}</option>`).join('')}
+                  ${[18,40,80,100,255,500,1000,4096,5000,32768].map((v) => `<option value="${v}">${v}</option>`).join('')}
                 </select>
               </div>
               <div><label class="field-card-label">Category</label>

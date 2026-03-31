@@ -91,7 +91,7 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
   const dynTypeOptions = DYNAMICS_FIELD_TYPES.map((t) => `<option value="${t}">${t}</option>`).join('');
   const sfToDynJson = JSON.stringify(SF_TO_DYNAMICS);
 
-  const LENGTH_OPTIONS = ['', 18, 40, 80, 100, 255, 500, 1000, 4000, 5000, 32768];
+  const LENGTH_OPTIONS = ['', 18, 40, 80, 100, 255, 500, 1000, 4096, 5000, 32768];
   const lengthOptionsHtml = LENGTH_OPTIONS.map((v) =>
     `<option value="${v}">${v === '' ? '— none' : v}</option>`
   ).join('');
@@ -769,8 +769,8 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
       var SF_TO_DYNAMICS_MAP = ${sfToDynJson};
       var SF_DEFAULT_LENGTHS = {
         'Text': 255, 'Text (Long)': 1000, 'Text Area (Long)': 5000,
-        'Long Text Area': 32768, 'URL': 255, 'Email': 254,
-        'Phone': 40, 'Picklist': 255, 'Multi-Select Picklist': 4099, 'Lookup': 18
+        'Long Text Area': 32768, 'URL': 255, 'Email': 80,
+        'Phone': 40, 'Picklist': 255, 'Multi-Select Picklist': 4096, 'Lookup': 18
       };
 
       function autoMapDynamics(sfSelect, fieldIdx) {
