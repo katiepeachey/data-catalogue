@@ -89,13 +89,16 @@ function enrichmentPanel(datapoints: EnrichmentDatapoint[]): string {
   const groups = categories.map((cat) => {
     const dps = datapoints.filter((d) => d.category === cat);
     const rows = dps.map((dp) => {
-      const fieldNameList = dp.fields.map((f) => f.exportFieldName || f.fieldName).join('\n');
+      const fieldNameList = dp.fields.map((f) => escapeHtml(f.exportFieldName || f.fieldName)).join('<br>');
       return `
       <label class="field-check-row enrichment-row" data-category="${escapeHtml(dp.category)}">
         <input type="checkbox" name="selected_enrichment" value="${escapeHtml(dp.id)}"
           class="enrichment-cb" onchange="updateCount()">
         <span class="field-check-label">${escapeHtml(dp.name)}</span>
-        <span class="field-check-type field-name-tip" title="${escapeHtml(fieldNameList)}">${dp.fields.length} field${dp.fields.length !== 1 ? 's' : ''}</span>
+        <span class="field-count-tip">
+          ${dp.fields.length} field${dp.fields.length !== 1 ? 's' : ''}
+          <span class="field-tip-box">${fieldNameList}</span>
+        </span>
       </label>`;
     }).join('');
 
@@ -269,6 +272,33 @@ export function fieldBuilderView(
     color: #9ca3af;
     white-space: nowrap;
   }
+
+  .field-count-tip {
+    position: relative;
+    font-size: 11px;
+    color: #9ca3af;
+    white-space: nowrap;
+    cursor: default;
+    text-decoration: underline dotted #d1d5db;
+  }
+  .field-tip-box {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background: #1a1a1a;
+    color: #fff;
+    font-size: 11px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+    z-index: 100;
+    line-height: 1.6;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .field-count-tip:hover .field-tip-box { display: block; }
 
   .empty-panel {
     padding: 24px 16px;
