@@ -71,6 +71,24 @@ export function cleaningFieldsView(fields: CleaningField[], flash?: string): str
 
 ${flashHtml}
 
+<div class="card" style="margin-bottom:16px;padding:16px 20px;">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:2px;">Import from CSV</div>
+      <div style="font-size:12px;color:#9ca3af;">Headers: <code>Label, Field Name, Type, Length, Help Text, Category</code></div>
+    </div>
+    <input type="file" id="csvFileInput" accept=".csv" style="font-size:13px;" />
+    <button class="btn btn-outline btn-sm" onclick="previewCsv()">Preview</button>
+  </div>
+  <div id="csvPreviewWrap" style="display:none;margin-top:14px;">
+    <div id="csvPreviewTable" style="overflow:auto;max-height:280px;margin-bottom:10px;"></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="btn btn-primary btn-sm" onclick="importCsv()">Import rows</button>
+      <span id="csvStatus" style="font-size:13px;color:#6b7280;"></span>
+    </div>
+  </div>
+</div>
+
 <div class="card" style="overflow:auto;">
   <table class="cf-table">
     <thead>
@@ -179,6 +197,77 @@ function addField() {
   }).then(function(r) { return r.json(); }).then(function(d) {
     if (d.ok) location.reload();
     else alert('Error: ' + (d.error || 'unknown'));
+  });
+}
+
+var parsedCsvRows = [];
+
+function parseCsv(text) {
+  var lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  var headers = lines[0].split(',').map(function(h) { return h.trim().replace(/^"|"$/g, ''); });
+  var colLabel    = headers.findIndex(function(h) { return /label/i.test(h); });
+  var colName     = headers.findIndex(function(h) { return /field.?name/i.test(h); });
+  var colType     = headers.findIndex(function(h) { return /type/i.test(h); });
+  var colLength   = headers.findIndex(function(h) { return /length/i.test(h); });
+  var colHelp     = headers.findIndex(function(h) { return /help/i.test(h); });
+  var colCategory = headers.findIndex(function(h) { return /category/i.test(h); });
+  return lines.slice(1).map(function(line) {
+    var cols = line.split(',').map(function(c) { return c.trim().replace(/^"|"$/g, ''); });
+    return {
+      label:     colLabel    >= 0 ? cols[colLabel]    : '',
+      fieldName: colName     >= 0 ? cols[colName]     : '',
+      fieldType: colType     >= 0 ? cols[colType]     : 'Text',
+      fieldLength: colLength >= 0 ? cols[colLength]   : '',
+      helpText:  colHelp     >= 0 ? cols[colHelp]     : '',
+      category:  colCategory >= 0 ? cols[colCategory] : 'optional',
+    };
+  }).filter(function(r) { return r.label || r.fieldName; });
+}
+
+function previewCsv() {
+  var file = document.getElementById('csvFileInput').files[0];
+  if (!file) { alert('Please select a CSV file first.'); return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    parsedCsvRows = parseCsv(e.target.result);
+    if (parsedCsvRows.length === 0) { alert('No valid rows found. Check your CSV headers.'); return; }
+    var html = '<table style="border-collapse:collapse;font-size:12px;min-width:600px;">';
+    html += '<thead><tr style="background:#f9fafb;">';
+    ['Label','Field Name','Type','Length','Help Text','Category'].forEach(function(h) {
+      html += '<th style="padding:6px 10px;border:1px solid #eaebee;text-align:left;font-weight:600;">' + h + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    parsedCsvRows.forEach(function(r) {
+      html += '<tr>';
+      [r.label, r.fieldName, r.fieldType, r.fieldLength, r.helpText, r.category].forEach(function(v) {
+        html += '<td style="padding:5px 10px;border:1px solid #eaebee;">' + (v || '') + '</td>';
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('csvPreviewTable').innerHTML = html;
+    document.getElementById('csvStatus').textContent = parsedCsvRows.length + ' rows ready to import';
+    document.getElementById('csvPreviewWrap').style.display = '';
+  };
+  reader.readAsText(file);
+}
+
+function importCsv() {
+  if (!parsedCsvRows.length) return;
+  document.getElementById('csvStatus').textContent = 'Importing…';
+  fetch('/admin/cleaning-fields/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(parsedCsvRows),
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) {
+      showToast('Imported ' + d.imported + ' fields' + (d.skipped ? ', skipped ' + d.skipped : ''));
+      setTimeout(function() { location.reload(); }, 1000);
+    } else {
+      alert('Error: ' + (d.error || 'unknown'));
+      document.getElementById('csvStatus').textContent = '';
+    }
   });
 }
 

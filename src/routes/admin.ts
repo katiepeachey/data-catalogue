@@ -460,4 +460,44 @@ router.post('/cleaning-fields/:fieldId/delete', (req: Request, res: Response) =>
   res.json({ ok: true });
 });
 
+// POST /admin/cleaning-fields/import — bulk import from CSV (client-parsed JSON)
+router.post('/cleaning-fields/import', (req: Request, res: Response) => {
+  const rows = req.body as Array<{
+    label?: string; fieldName?: string; fieldType?: string;
+    fieldLength?: string | null; helpText?: string; category?: string;
+  }>;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    res.status(400).json({ error: 'No rows provided' });
+    return;
+  }
+
+  // Find current max displayOrder so new rows append after existing ones
+  const existing = getDistinctCleaningFields();
+  const maxOrder = existing.reduce((m, f) => Math.max(m, f.displayOrder), 0);
+
+  let imported = 0;
+  let skipped = 0;
+  rows.forEach((row, i) => {
+    const label = (row.label || '').trim();
+    const fieldName = (row.fieldName || '').trim();
+    if (!label || !fieldName) { skipped++; return; }
+    const fieldId = fieldName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    addCleaningField({
+      fieldId,
+      label,
+      fieldName,
+      fieldType: (row.fieldType || 'Text').trim(),
+      fieldLength: row.fieldLength ? parseInt(String(row.fieldLength), 10) || null : null,
+      helpText: (row.helpText || '').trim(),
+      category: (['required', 'recommended', 'optional'].includes((row.category || '').toLowerCase())
+        ? (row.category as string).toLowerCase()
+        : 'optional') as 'required' | 'recommended' | 'optional',
+      displayOrder: maxOrder + i + 1,
+    });
+    imported++;
+  });
+
+  res.json({ ok: true, imported, skipped });
+});
+
 export default router;
