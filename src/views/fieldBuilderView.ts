@@ -5,7 +5,7 @@ export interface EnrichmentDatapoint {
   id: string;
   name: string;
   category: string;
-  fields: { fieldName: string; displayName: string; sfFieldType: string; dynamicsFieldType: string; fieldLength: number | null; helpText: string }[];
+  fields: { fieldName: string; exportFieldName: string; displayName: string; sfFieldType: string; dynamicsFieldType: string; fieldLength: number | null; helpText: string }[];
 }
 
 const CRM_LABELS: Record<string, string> = {
@@ -88,13 +88,16 @@ function enrichmentPanel(datapoints: EnrichmentDatapoint[]): string {
 
   const groups = categories.map((cat) => {
     const dps = datapoints.filter((d) => d.category === cat);
-    const rows = dps.map((dp) => `
+    const rows = dps.map((dp) => {
+      const fieldNameList = dp.fields.map((f) => f.exportFieldName || f.fieldName).join('\n');
+      return `
       <label class="field-check-row enrichment-row" data-category="${escapeHtml(dp.category)}">
         <input type="checkbox" name="selected_enrichment" value="${escapeHtml(dp.id)}"
           class="enrichment-cb" onchange="updateCount()">
         <span class="field-check-label">${escapeHtml(dp.name)}</span>
-        <span class="field-check-type">${dp.fields.length} field${dp.fields.length !== 1 ? 's' : ''}</span>
-      </label>`).join('');
+        <span class="field-check-type field-name-tip" title="${escapeHtml(fieldNameList)}">${dp.fields.length} field${dp.fields.length !== 1 ? 's' : ''}</span>
+      </label>`;
+    }).join('');
 
     return `
       <div class="field-group enrichment-group" data-category="${escapeHtml(cat)}">

@@ -15,6 +15,13 @@ interface FieldRow {
   admin_edited: number;
   example_value: string | null;
   is_sub_field: number;
+  export_field_name: string;
+}
+
+function defaultExportName(fieldName: string): string {
+  if (fieldName.toLowerCase().startsWith('kernel_')) return fieldName;
+  if (fieldName.toLowerCase().startsWith('krnl_')) return 'kernel_' + fieldName.slice(5);
+  return 'kernel_' + fieldName;
 }
 
 function rowToField(row: FieldRow): DatapointField {
@@ -32,6 +39,7 @@ function rowToField(row: FieldRow): DatapointField {
     adminEdited: row.admin_edited === 1,
     exampleValue: row.example_value || null,
     isSubField: row.is_sub_field === 1,
+    exportFieldName: row.export_field_name || defaultExportName(row.field_name),
   };
 }
 
@@ -71,13 +79,14 @@ export function upsertFieldFromSync(
     ).get(datapointId) as { max_order: number };
 
     db.prepare(`
-      INSERT INTO datapoint_fields (datapoint_id, field_name, display_name, sf_field_type, sort_order)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(datapointId, fieldName, displayName, sfFieldType, maxOrder.max_order + 1);
+      INSERT INTO datapoint_fields (datapoint_id, field_name, display_name, sf_field_type, sort_order, export_field_name)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(datapointId, fieldName, displayName, sfFieldType, maxOrder.max_order + 1, defaultExportName(fieldName));
   } else if (existing.admin_edited === 0) {
     db.prepare(
       'UPDATE datapoint_fields SET display_name = ?, sf_field_type = ? WHERE id = ?'
     ).run(displayName, sfFieldType, existing.id);
+    // Never update export_field_name during sync — admin controls it
   }
   // If admin_edited = 1, leave untouched
 }
@@ -93,6 +102,7 @@ export interface FieldConfigUpdate {
   sortOrder: number;
   exampleValue?: string | null;
   isSubField?: boolean;
+  exportFieldName?: string;
 }
 
 /** Bulk update field configuration from admin UI */
@@ -102,16 +112,19 @@ export function updateFieldConfig(datapointId: string, fields: FieldConfigUpdate
     UPDATE datapoint_fields
     SET display_name = ?, sf_field_type = ?, dynamics_field_type = ?,
         field_length = ?, help_text = ?,
-        visible = ?, sort_order = ?, example_value = ?, is_sub_field = ?, admin_edited = 1
+        visible = ?, sort_order = ?, example_value = ?, is_sub_field = ?,
+        export_field_name = ?, admin_edited = 1
     WHERE datapoint_id = ? AND field_name = ?
   `);
 
   const updateMany = db.transaction((items: FieldConfigUpdate[]) => {
     for (const f of items) {
+      const exportName = enforceKernelPrefix(f.exportFieldName || defaultExportName(f.fieldName));
       updateStmt.run(
         f.displayName, f.sfFieldType, f.dynamicsFieldType,
         f.fieldLength ?? null, f.helpText,
         f.visible ? 1 : 0, f.sortOrder, f.exampleValue ?? null, f.isSubField ? 1 : 0,
+        exportName,
         datapointId, f.fieldName
       );
     }
@@ -136,7 +149,14 @@ export function addField(
   const dynamicsFieldType = SF_TO_DYNAMICS[sfFieldType] || '';
 
   db.prepare(`
-    INSERT INTO datapoint_fields (datapoint_id, field_name, display_name, sf_field_type, dynamics_field_type, sort_order, admin_edited, example_value)
-    VALUES (?, ?, ?, ?, ?, ?, 1, ?)
-  `).run(datapointId, fieldName, displayName, sfFieldType, dynamicsFieldType, maxOrder.max_order + 1, exampleValue ?? null);
+    INSERT INTO datapoint_fields (datapoint_id, field_name, display_name, sf_field_type, dynamics_field_type, sort_order, admin_edited, example_value, export_field_name)
+    VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
+  `).run(datapointId, fieldName, displayName, sfFieldType, dynamicsFieldType, maxOrder.max_order + 1, exampleValue ?? null, defaultExportName(fieldName));
+}
+
+/** Ensure export field name starts with kernel_ */
+export function enforceKernelPrefix(name: string): string {
+  const trimmed = name.trim();
+  if (trimmed.toLowerCase().startsWith('kernel_')) return trimmed;
+  return 'kernel_' + trimmed;
 }

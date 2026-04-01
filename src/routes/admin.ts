@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { SF_FIELD_TYPES } from '../types';
 import requireAuth from '../middleware/requireAuth';
 import { getSubmission, updateSubmission } from '../store';
 import { getAllSubmissionsWithMeta, getDatapointWithMeta, toggleVisibility } from '../db/datapoints';
@@ -92,6 +93,7 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       sortOrder?: string;
       exampleValue?: string;
       isSubField?: string;
+      exportFieldName?: string;
     }>) || [];
 
     const existingFields = getFieldsForDatapoint(submission.id);
@@ -113,13 +115,14 @@ router.post('/review/:id', async (req: Request, res: Response) => {
       const sortOrder = isNaN(sortOrderParsed) ? fi : sortOrderParsed;
       const exampleValue = rf.exampleValue || null;
       const isSubField = rf.isSubField === '1';
+      const exportFieldName = rf.exportFieldName || undefined;
 
       if (existingFieldNames.has(fieldName)) {
-        fieldUpdates.push({ fieldName, displayName, sfFieldType, dynamicsFieldType, fieldLength, helpText, visible, sortOrder, exampleValue, isSubField });
+        fieldUpdates.push({ fieldName, displayName, sfFieldType, dynamicsFieldType, fieldLength, helpText, visible, sortOrder, exampleValue, isSubField, exportFieldName });
       } else {
         // New field added manually via "Add Field" button
         addFieldToDatapoint(submission.id, fieldName, displayName, sfFieldType, exampleValue);
-        updateFieldConfig(submission.id, [{ fieldName, displayName, sfFieldType, dynamicsFieldType, fieldLength, helpText, visible, sortOrder, exampleValue, isSubField }]);
+        updateFieldConfig(submission.id, [{ fieldName, displayName, sfFieldType, dynamicsFieldType, fieldLength, helpText, visible, sortOrder, exampleValue, isSubField, exportFieldName }]);
       }
     }
 
@@ -299,6 +302,7 @@ function getEnrichmentDatapoints(): EnrichmentDatapoint[] {
       .filter((f: DatapointField) => f.visible)
       .map((f: DatapointField) => ({
         fieldName: f.fieldName,
+        exportFieldName: f.exportFieldName,
         displayName: f.displayName,
         sfFieldType: f.sfFieldType,
         dynamicsFieldType: f.dynamicsFieldType,
@@ -384,7 +388,7 @@ router.post('/field-builder/export', (req: Request, res: Response) => {
         csvRows.push([
           'Enrichment',
           field.displayName,
-          exportFieldName(field.fieldName),
+          exportFieldName(field.exportFieldName || field.fieldName),
           enrichmentFieldType(field),
           field.fieldLength != null ? String(field.fieldLength) : '',
           field.helpText,
@@ -458,6 +462,51 @@ router.post('/cleaning-fields/:fieldId/edit', (req: Request, res: Response) => {
 router.post('/cleaning-fields/:fieldId/delete', (req: Request, res: Response) => {
   deleteCleaningField(req.params.fieldId);
   res.json({ ok: true });
+});
+
+// POST /admin/cleaning-fields/import — bulk import from CSV (client-parsed JSON)
+router.post('/cleaning-fields/import', (req: Request, res: Response) => {
+  const rows = req.body as Array<{
+    label?: string; fieldName?: string; fieldType?: string;
+    fieldLength?: string | null; helpText?: string; category?: string;
+  }>;
+  if (!Array.isArray(rows) || rows.length === 0) {
+    res.status(400).json({ error: 'No rows provided' });
+    return;
+  }
+
+  // Find current max displayOrder so new rows append after existing ones
+  const existing = getDistinctCleaningFields();
+  const maxOrder = existing.reduce((m, f) => Math.max(m, f.displayOrder), 0);
+
+  let imported = 0;
+  let skipped = 0;
+  rows.forEach((row, i) => {
+    const label = (row.label || '').trim();
+    const fieldName = (row.fieldName || '').trim();
+    if (!label || !fieldName) { skipped++; return; }
+    const fieldId = fieldName.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    // Normalise type to match SF_FIELD_TYPES (case-insensitive lookup)
+    const rawType = (row.fieldType || 'Text').trim();
+    const matchedType = SF_FIELD_TYPES.find(
+      (t) => t.toLowerCase() === rawType.toLowerCase()
+    ) || rawType;
+    addCleaningField({
+      fieldId,
+      label,
+      fieldName,
+      fieldType: matchedType,
+      fieldLength: row.fieldLength ? parseInt(String(row.fieldLength), 10) || null : null,
+      helpText: (row.helpText || '').trim(),
+      category: (['required', 'recommended', 'optional'].includes((row.category || '').toLowerCase())
+        ? (row.category as string).toLowerCase()
+        : 'optional') as 'required' | 'recommended' | 'optional',
+      displayOrder: maxOrder + i + 1,
+    });
+    imported++;
+  });
+
+  res.json({ ok: true, imported, skipped });
 });
 
 export default router;
