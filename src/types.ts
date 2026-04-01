@@ -110,4 +110,5 @@ export interface DatapointField {
   adminEdited: boolean;
   exampleValue?: string | null;
   isSubField: boolean;
+  exportFieldName: string;
 }

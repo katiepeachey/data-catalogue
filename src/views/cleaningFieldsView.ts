@@ -71,6 +71,24 @@ export function cleaningFieldsView(fields: CleaningField[], flash?: string): str
 
 ${flashHtml}
 
+<div class="card" style="margin-bottom:16px;padding:16px 20px;">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <div>
+      <div style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:2px;">Import from CSV</div>
+      <div style="font-size:12px;color:#9ca3af;">Headers: <code>Label, Field Name, Type, Length, Help Text, Category</code></div>
+    </div>
+    <input type="file" id="csvFileInput" accept=".csv,.txt" style="font-size:13px;" />
+    <button type="button" class="btn btn-outline btn-sm" onclick="previewCsv()">Preview</button>
+  </div>
+  <div id="csvError" style="display:none;margin-top:10px;padding:8px 12px;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;font-size:13px;color:#b91c1c;"></div>
+  <div id="csvPreviewWrap" style="display:none;margin-top:14px;">
+    <div id="csvPreviewTable" style="overflow:auto;max-height:280px;margin-bottom:10px;"></div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button type="button" class="btn btn-primary btn-sm" onclick="importCsv()">Import rows</button>
+      <span id="csvStatus" style="font-size:13px;color:#6b7280;"></span>
+    </div>
+  </div>
+</div>
 <div class="card" style="overflow:auto;">
   <table class="cf-table">
     <thead>
@@ -179,6 +197,106 @@ function addField() {
   }).then(function(r) { return r.json(); }).then(function(d) {
     if (d.ok) location.reload();
     else alert('Error: ' + (d.error || 'unknown'));
+  });
+}
+
+var parsedCsvRows = [];
+
+function csvShowError(msg) {
+  var el = document.getElementById('csvError');
+  el.textContent = msg;
+  el.style.display = msg ? '' : 'none';
+}
+
+function parseCsv(text) {
+  var lines = text.replace(/\\r\\n/g, '\\n').replace(/\\r/g, '\\n').trim().split('\\n');
+  if (lines.length < 2) return [];
+  var headers = lines[0].split(',').map(function(h) { return h.trim().replace(/^"|"$/g, '').toLowerCase(); });
+  var colLabel    = -1, colName = -1, colType = -1, colLength = -1, colHelp = -1, colCat = -1;
+  headers.forEach(function(h, i) {
+    if (h.indexOf('label') !== -1) colLabel = i;
+    else if (h.indexOf('field') !== -1 && h.indexOf('name') !== -1) colName = i;
+    else if (h.indexOf('type') !== -1) colType = i;
+    else if (h.indexOf('length') !== -1) colLength = i;
+    else if (h.indexOf('help') !== -1) colHelp = i;
+    else if (h.indexOf('category') !== -1) colCat = i;
+  });
+  var rows = [];
+  for (var i = 1; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+    var cols = line.split(',').map(function(c) { return c.trim().replace(/^"|"$/g, ''); });
+    var label = colLabel >= 0 ? cols[colLabel] : '';
+    var fieldName = colName >= 0 ? cols[colName] : '';
+    if (!label && !fieldName) continue;
+    rows.push({
+      label:       label,
+      fieldName:   fieldName,
+      fieldType:   colType   >= 0 ? cols[colType]   : 'Text',
+      fieldLength: colLength >= 0 ? cols[colLength]  : '',
+      helpText:    colHelp   >= 0 ? cols[colHelp]    : '',
+      category:    colCat    >= 0 ? cols[colCat]     : 'optional',
+    });
+  }
+  return rows;
+}
+
+function previewCsv() {
+  csvShowError('');
+  var inputEl = document.getElementById('csvFileInput');
+  var file = inputEl.files && inputEl.files[0];
+  if (!file) { csvShowError('Please select a CSV file first.'); return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var text = e.target.result;
+      parsedCsvRows = parseCsv(text);
+      if (parsedCsvRows.length === 0) {
+        csvShowError('No valid rows found. Make sure your CSV has headers: Label, Field Name, Type, Length, Help Text, Category');
+        return;
+      }
+      var html = '<table style="border-collapse:collapse;font-size:12px;min-width:600px;">';
+      html += '<thead><tr style="background:#f9fafb;">';
+      ['Label','Field Name','Type','Length','Help Text','Category'].forEach(function(h) {
+        html += '<th style="padding:6px 10px;border:1px solid #eaebee;text-align:left;font-weight:600;">' + h + '</th>';
+      });
+      html += '</tr></thead><tbody>';
+      parsedCsvRows.forEach(function(r) {
+        html += '<tr>';
+        [r.label, r.fieldName, r.fieldType, r.fieldLength, r.helpText, r.category].forEach(function(v) {
+          html += '<td style="padding:5px 10px;border:1px solid #eaebee;">' + (v || '') + '</td>';
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      document.getElementById('csvPreviewTable').innerHTML = html;
+      document.getElementById('csvStatus').textContent = parsedCsvRows.length + ' rows ready to import';
+      document.getElementById('csvPreviewWrap').style.display = '';
+    } catch(err) {
+      csvShowError('Error parsing file: ' + err.message);
+    }
+  };
+  reader.onerror = function() { csvShowError('Error reading file.'); };
+  reader.readAsText(file);
+}
+
+function importCsv() {
+  if (!parsedCsvRows.length) { csvShowError('Click Preview first to load rows.'); return; }
+  document.getElementById('csvStatus').textContent = 'Importing\u2026';
+  fetch('/admin/cleaning-fields/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(parsedCsvRows),
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.ok) {
+      showToast('Imported ' + d.imported + ' fields' + (d.skipped ? ', skipped ' + d.skipped : ''));
+      setTimeout(function() { location.reload(); }, 1200);
+    } else {
+      csvShowError('Import error: ' + (d.error || 'unknown'));
+      document.getElementById('csvStatus').textContent = '';
+    }
+  }).catch(function(err) {
+    csvShowError('Network error: ' + err.message);
   });
 }
 

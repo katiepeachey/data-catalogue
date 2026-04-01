@@ -183,6 +183,13 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
             value="${escapeHtml(f.displayName)}" />
         </div>
         <div class="field-card-col">
+          <label class="field-card-label">Export Field Name <span style="font-size:10px;color:#9ca3af;font-weight:400;">(auto-prefixed kernel_)</span></label>
+          <input class="form-input" type="text" name="fields[${i}][exportFieldName]"
+            value="${escapeHtml(f.exportFieldName)}"
+            placeholder="kernel_field_name"
+            oninput="enforceKernelPrefix(this)" />
+        </div>
+        <div class="field-card-col">
           <label class="field-card-label">SF Type</label>
           <select class="form-select" name="fields[${i}][sfFieldType]"
             onchange="autoMapDynamics(this, ${i})">
@@ -772,6 +779,26 @@ export function reviewView(submission: SubmissionWithMeta, fields: DatapointFiel
         'Long Text Area': 32768, 'URL': 255, 'Email': 80,
         'Phone': 40, 'Picklist': 255, 'Multi-Select Picklist': 4096, 'Lookup': 18
       };
+
+      function enforceKernelPrefix(input) {
+        var v = input.value;
+        if (v && !v.toLowerCase().startsWith('kernel_')) {
+          // Only auto-correct on blur, not while typing
+          input.dataset.needsPrefix = 'true';
+        } else {
+          input.dataset.needsPrefix = '';
+        }
+      }
+
+      document.addEventListener('focusout', function(e) {
+        if (e.target && e.target.name && e.target.name.indexOf('[exportFieldName]') !== -1) {
+          var input = e.target;
+          var v = (input.value || '').trim();
+          if (v && !v.toLowerCase().startsWith('kernel_')) {
+            input.value = 'kernel_' + v;
+          }
+        }
+      });
 
       function autoMapDynamics(sfSelect, fieldIdx) {
         var sfType = sfSelect.value;
