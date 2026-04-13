@@ -33,11 +33,12 @@ export interface RawCatalogField {
 export async function fetchCatalogFields(): Promise<RawCatalogField[]> {
   const sql = `
     WITH data_catalogue_agents AS (
-      -- All agents/flows tagged as Agent Catalogue, sourced directly from the snapshot.
-      -- The snapshot carries agent_type_id for both control agents and flows.
+      -- Agents included in the Agent Catalogue via either mechanism:
+      --   1. has_data_catalogue_agent_type = true  (tagged with agent type 135 — existing behaviour)
+      --   2. in_data_catalogue = true              (explicitly flagged on the config table)
       SELECT DISTINCT agent_id, agent_name
       FROM core.agent_classifier_field_snapshot
-      WHERE agent_type_id = ${DATA_CATALOGUE_TYPE_ID}
+      WHERE (has_data_catalogue_agent_type = true OR in_data_catalogue = true)
         AND agent_status = 'active'
         AND has_catalog_field_match = true
         AND catalog_field_archived = false
